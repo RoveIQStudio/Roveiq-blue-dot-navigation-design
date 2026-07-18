@@ -163,8 +163,10 @@ export class ThreeUserMarker extends THREE.Group {
   private isVisible = false;
   private projection: MercatorProjection | null = null;
   private isDisposed = false;
-  // Track if we own the materials (created custom) or borrowed from cache
-  private usingCachedMaterials = true;
+  // Track per-category whether materials are borrowed from the shared CACHE
+  // (never disposed by this instance) or custom-created (owned, disposed here).
+  private usingCachedDotMaterials = true;
+  private usingCachedGlowMaterials = true;
 
   // Device orientation state
   private deviceHeading: number | null = null;
@@ -289,11 +291,7 @@ export class ThreeUserMarker extends THREE.Group {
 
     // Blue Dot (main marker) - top layer
     const dotGeometry = new THREE.CircleGeometry(dotSize, 32);
-    const dotMaterial = new THREE.MeshBasicMaterial({
-      color: this.options.color,
-      side: THREE.DoubleSide,
-    });
-    this.dotMesh = new THREE.Mesh(dotGeometry, dotMaterial);
+    this.dotMesh = new THREE.Mesh(dotGeometry, this.dotMaterials.high);
     this.dotMesh.position.z = 0.3;
     this.dotMesh.renderOrder = 102;
 
@@ -844,11 +842,11 @@ export class ThreeUserMarker extends THREE.Group {
     this.options.color = color;
 
     // Dispose old custom materials to prevent memory leak
-    if (!this.usingCachedMaterials) {
+    if (!this.usingCachedDotMaterials) {
       this.dotMaterials.high?.dispose();
       this.dotMaterials.low?.dispose();
     }
-    this.usingCachedMaterials = false;
+    this.usingCachedDotMaterials = false;
 
     // Create new materials with the new color (don't use cache for custom colors)
     this.dotMaterials.high = new THREE.MeshBasicMaterial({
@@ -896,11 +894,11 @@ export class ThreeUserMarker extends THREE.Group {
     this.options.accuracyRingColor = color;
 
     // Dispose old custom materials to prevent memory leak
-    if (!this.usingCachedMaterials) {
+    if (!this.usingCachedGlowMaterials) {
       this.glowMaterials.high?.dispose();
       this.glowMaterials.low?.dispose();
     }
-    this.usingCachedMaterials = false;
+    this.usingCachedGlowMaterials = false;
 
     // Create new materials with the new color (don't use cache for custom colors)
     this.glowMaterials.high = new THREE.MeshBasicMaterial({
@@ -1273,37 +1271,38 @@ export class ThreeUserMarker extends THREE.Group {
   }
 
   /**
-   * Clean up all Three.js resources (geometries, materials)
-   * After calling dispose(), the marker should not be used
+   * Clean up all Three.js resources this instance owns.
+   * Shared CACHE materials are never disposed here — other markers use them.
+   * After calling dispose(), the marker should not be used.
    */
   dispose(): void {
     if (this.isDisposed) return;
     this.isDisposed = true;
 
-    this.traverse((child) => {
-      if (child instanceof THREE.Mesh) {
-        // Dispose geometry
-        if (child.geometry) {
-          child.geometry.dispose();
-        }
+    // Cone geometries and materials are always created per-instance
+    // (createDirectionCone never pulls from CACHE), so this instance owns them.
+    this.disposeConeGroup();
 
-        // Dispose material(s) ONLY if not using cached materials
-        // Since we are using shared materials, we generally should NOT dispose them 
-        // when a single marker is removed, as other markers might use them.
-        // However, if we forced custom materials (not implemented in this refactor yet), we would.
-        // For now, we skip material disposal for cached items.
+    // Both swappable glow geometries — only one is attached at a time,
+    // so a traverse() would always miss the detached one.
+    this.ringGeometry.dispose();
+    this.lostCircleGeometry.dispose();
+    this.borderMesh.geometry.dispose();
+    this.dotMesh.geometry.dispose();
 
-        if (!this.usingCachedMaterials && child.material) {
-          if (Array.isArray(child.material)) {
-            for (const material of child.material) {
-              material.dispose();
-            }
-          } else {
-            child.material.dispose();
-          }
-        }
-      }
-    });
+    // Border material is always per-instance.
+    (this.borderMesh.material as THREE.Material).dispose();
+
+    // high/low dot+glow materials are owned only after a custom recolor.
+    if (!this.usingCachedDotMaterials) {
+      this.dotMaterials.high.dispose();
+      this.dotMaterials.low.dispose();
+    }
+    if (!this.usingCachedGlowMaterials) {
+      this.glowMaterials.high.dispose();
+      this.glowMaterials.low.dispose();
+    }
+    // lost/warning/danger materials are always CACHE-shared.
 
     // Clear references
     this.projection = null;

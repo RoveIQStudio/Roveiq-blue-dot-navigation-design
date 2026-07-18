@@ -515,3 +515,40 @@ describe('ThreeUserMarker', () => {
         });
     });
 });
+
+describe('material cache integrity', () => {
+  it('recoloring one marker never disposes shared cached materials used by another', () => {
+    const m1 = new ThreeUserMarker();
+    const m2 = new ThreeUserMarker();
+
+    const sharedGlow = (m2 as any).glowMaterials.high as THREE.Material;
+    let sharedGlowDisposed = false;
+    sharedGlow.addEventListener('dispose', () => { sharedGlowDisposed = true; });
+
+    // setColor calls setDotColor then setRingColor — the old single flag made
+    // the second call dispose the OTHER category's still-shared materials.
+    m1.setColor(0xff0000);
+
+    expect(sharedGlowDisposed).toBe(false);
+    m1.dispose();
+    m2.dispose();
+  });
+
+  it('dispose() releases both swap geometries and the per-instance border material', () => {
+    const marker = new ThreeUserMarker();
+    const ringGeometry = (marker as any).ringGeometry as THREE.BufferGeometry;
+    const lostGeometry = (marker as any).lostCircleGeometry as THREE.BufferGeometry;
+    const borderMaterial = (marker as any).borderMesh.material as THREE.Material;
+
+    const disposed: string[] = [];
+    ringGeometry.addEventListener('dispose', () => disposed.push('ring'));
+    lostGeometry.addEventListener('dispose', () => disposed.push('lost'));
+    borderMaterial.addEventListener('dispose', () => disposed.push('border'));
+
+    marker.dispose();
+
+    expect(disposed).toContain('ring');
+    expect(disposed).toContain('lost'); // detached swap geometry leaked before
+    expect(disposed).toContain('border'); // per-instance material leaked before
+  });
+});
