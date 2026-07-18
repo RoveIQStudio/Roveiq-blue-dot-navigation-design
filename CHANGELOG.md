@@ -13,6 +13,7 @@ A correctness-and-packaging release. The runtime API of the controllers and mark
 - `error` in both React hooks (`useYouAreHere`, `useLocation`) and the Svelte store is now typed `RoveError | null`; the `onError` callback receives a `RoveError`.
 - React hook options other than `center`, `scale`, and `locationSource` are read once at mount; changing them later requires remounting the component.
 - Controllers no longer dispose an injected `locationSource` — the caller owns injected sources.
+- React hooks (`useYouAreHere`, `useLocation`) now neither stop nor dispose an injected `locationSource` on unmount — they only unsubscribe their own listeners. A 2.x consumer that relied on unmount to halt an injected source's GPS watch must now stop/dispose that source itself.
 - `svelte` is now an optional `peerDependency` (`>=4.0.0`); install it only if you use the Svelte store.
 - Removed unwired exports: `FrameMonitor`, `AnimationManager` (and their option/stat types).
 - Removed never-emitted error codes: `PERMISSION_DISMISSED`, `PERMISSION_UNAVAILABLE`, `SENSORS_UNAVAILABLE`, `NETWORK_ERROR`, `INVALID_CONFIGURATION`, `NOT_INITIALIZED`, `ALREADY_STARTED`.
@@ -42,6 +43,9 @@ A correctness-and-packaging release. The runtime API of the controllers and mark
 
 ### Known open questions
 - **Package naming.** The repo (`RoveBeacon`), the published package (`rovemaps-you-are-here`), and the CLI (`create-rovebeacon`) use three different names. Reconciling them is an npm-ecosystem decision (deprecations, redirects) and is intentionally deferred — nothing was renamed in this release.
+
+### Bundle
+Measured minified + gzipped (size-limit): Core ESM 13.44 kB · Core CJS 13.89 kB · React entry 9.7 kB · Svelte entry 3.52 kB.
 
 ### CDN (ESM)
 - jsDelivr: `https://cdn.jsdelivr.net/npm/rovemaps-you-are-here@3/dist/index.js`

@@ -148,7 +148,7 @@ v3.0.0 is a correctness-and-packaging release. The runtime API of the controller
 - **UMD bundle removed.** Load the ESM build from a CDN with `<script type="module">` (see [CDN (ESM)](#cdn-esm)).
 - **`useYouAreHere().marker` is now `ThreeUserMarker | null`.** The marker is created after mount (StrictMode-safe), so guard for null before rendering it.
 - **`error` is now `RoveError | null`** in both React hooks and the Svelte store.
-- **Injected `locationSource` is no longer disposed by the SDK.** If you pass your own source, you own its lifecycle.
+- **Injected `locationSource` is no longer stopped or disposed by the SDK.** Neither the controllers nor the React hooks (`useYouAreHere`, `useLocation`) stop or dispose a source you pass in — on unmount/teardown they only unsubscribe their own listeners. If you relied on unmount to halt an injected source's GPS watch, call `stop()`/`dispose()` on that source yourself.
 - **Removed unwired exports** `FrameMonitor` and `AnimationManager` (and their option/stat types).
 - **Removed never-emitted error codes:** `PERMISSION_DISMISSED`, `PERMISSION_UNAVAILABLE`, `SENSORS_UNAVAILABLE`, `NETWORK_ERROR`, `INVALID_CONFIGURATION`, `NOT_INITIALIZED`, `ALREADY_STARTED`.
 - **`svelte` is now an optional peer dependency** (`>=4.0.0`); install it only if you use the Svelte store.
