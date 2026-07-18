@@ -23,7 +23,7 @@
 1. **v3.0.0 breaking release** — packaging and API fixes below cannot land cleanly in a 2.x patch.
 2. **UMD build is dropped.** CDN users get ESM via `<script type="module">` (README rewritten in Task 19). Rationale: Vite lib mode cannot do multi-entry UMD, and multi-entry is the correct fix for the bundled-React critical.
 3. **FrameMonitor + AnimationManager are deleted**, not repaired. They are exported nowhere else, wired to nothing, and broken as designed (no rAF-gap rejection, no hysteresis). If adaptive quality is ever wanted, it gets designed fresh.
-4. **Repo URL standardized** to `https://github.com/russellmiddleton33/RoveBeacon` (matches README badges). Swap if wrong.
+4. **Repo URL standardized** to `https://github.com/RoveIQStudio/Roveiq-blue-dot-navigation-design` (matches README badges). Swap if wrong.
 5. **Package keeps its name** `rovemaps-you-are-here`. The roveBeacon/rovemaps/rovebeacon naming sprawl is flagged in Task 19 as an open question, not resolved here.
 
 ---
@@ -403,7 +403,7 @@ SOFTWARE.
 ```json
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/russellmiddleton33/RoveBeacon.git"
+    "url": "git+https://github.com/RoveIQStudio/Roveiq-blue-dot-navigation-design.git"
   },
 ```
 
@@ -2294,7 +2294,7 @@ In `package.json`: `"version": "3.0.0"`.
 - Update every React example to import from `rovemaps-you-are-here/react` and handle the nullable marker (`{marker && <primitive object={marker} />}`).
 - Update every Svelte example to import from `rovemaps-you-are-here/svelte`.
 - Remove any references to `FrameMonitor` / `AnimationManager` (grep the README).
-- Standardize all GitHub URLs on `github.com/russellmiddleton33/RoveBeacon` (README badges already use it); fix `packages/create-rovebeacon/README.md` which currently points at `github.com/rovemaps/rovebeacon`.
+- Standardize all GitHub URLs on `github.com/RoveIQStudio/Roveiq-blue-dot-navigation-design` (README badges already use it); fix `packages/create-rovebeacon/README.md` which currently points at `github.com/rovemaps/rovebeacon`.
 - Add a "Migrating from 2.x" section listing the breaking changes (copy the CHANGELOG list from Step 4).
 
 - [ ] **Step 3: Template versions**

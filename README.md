@@ -15,10 +15,10 @@
   <a href="https://bundlephobia.com/package/rovemaps-you-are-here">
     <img src="https://img.shields.io/bundlephobia/minzip/rovemaps-you-are-here?style=flat-square" alt="bundle size" />
   </a>
-  <a href="https://github.com/russellmiddleton33/RoveBeacon/blob/main/LICENSE">
+  <a href="https://github.com/RoveIQStudio/Roveiq-blue-dot-navigation-design/blob/main/LICENSE">
     <img src="https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square" alt="license" />
   </a>
-  <a href="https://russellmiddleton33.github.io/RoveBeacon/">
+  <a href="https://roveiqstudio.github.io/Roveiq-blue-dot-navigation-design/">
     <img src="https://img.shields.io/badge/demo-live-success?style=flat-square" alt="live demo" />
   </a>
 </p>
@@ -28,7 +28,7 @@
   <a href="#features">Features</a> ·
   <a href="#api-reference">API</a> ·
   <a href="#examples">Examples</a> ·
-  <a href="https://russellmiddleton33.github.io/RoveBeacon/">Live Demo</a>
+  <a href="https://roveiqstudio.github.io/Roveiq-blue-dot-navigation-design/">Live Demo</a>
 </p>
 
 ---
@@ -47,7 +47,7 @@ const controller = new ThreeYouAreHereController({
 await controller.start(scene);
 ```
 
-**[Try the Live Demo →](https://russellmiddleton33.github.io/RoveBeacon/)**
+**[Try the Live Demo →](https://roveiqstudio.github.io/Roveiq-blue-dot-navigation-design/)**
 
 ---
 
@@ -632,7 +632,7 @@ rovemaps-you-are-here/
 ### Setup
 
 ```bash
-git clone https://github.com/russellmiddleton33/RoveBeacon.git
+git clone https://github.com/RoveIQStudio/Roveiq-blue-dot-navigation-design.git
 cd RoveBeacon
 npm install
 ```
@@ -759,7 +759,7 @@ MIT © [Russell Middleton](https://github.com/russellmiddleton33)
 ---
 
 <p align="center">
-  <a href="https://russellmiddleton33.github.io/RoveBeacon/">Live Demo</a> ·
-  <a href="https://github.com/russellmiddleton33/RoveBeacon/issues">Report Bug</a> ·
-  <a href="https://github.com/russellmiddleton33/RoveBeacon/issues">Request Feature</a>
+  <a href="https://roveiqstudio.github.io/Roveiq-blue-dot-navigation-design/">Live Demo</a> ·
+  <a href="https://github.com/RoveIQStudio/Roveiq-blue-dot-navigation-design/issues">Report Bug</a> ·
+  <a href="https://github.com/RoveIQStudio/Roveiq-blue-dot-navigation-design/issues">Request Feature</a>
 </p>

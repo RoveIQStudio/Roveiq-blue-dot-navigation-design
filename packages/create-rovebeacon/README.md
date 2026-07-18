@@ -72,6 +72,6 @@ After creating your project:
 
 ## Links
 
-- [RoveBeacon Documentation](https://github.com/russellmiddleton33/RoveBeacon)
+- [RoveBeacon Documentation](https://github.com/RoveIQStudio/Roveiq-blue-dot-navigation-design)
 - [Three.js Documentation](https://threejs.org/docs/)
 - [React Three Fiber Documentation](https://docs.pmnd.rs/react-three-fiber/)

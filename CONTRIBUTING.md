@@ -6,7 +6,7 @@ Thank you for your interest in contributing! This guide will help you get starte
 
 ```bash
 # Clone the repository
-git clone https://github.com/russellmiddleton33/RoveBeacon.git
+git clone https://github.com/RoveIQStudio/Roveiq-blue-dot-navigation-design.git
 cd RoveBeacon
 
 # Install dependencies
@@ -23,7 +23,7 @@ npm test
 
 ### 1. Find or Create an Issue
 
-- Check [existing issues](https://github.com/russellmiddleton33/RoveBeacon/issues)
+- Check [existing issues](https://github.com/RoveIQStudio/Roveiq-blue-dot-navigation-design/issues)
 - For new features, open an issue first to discuss the approach
 - For bugs, include reproduction steps and browser/device info
 
@@ -190,7 +190,7 @@ Maintainers only:
 
 ## Questions?
 
-- Open a [discussion](https://github.com/russellmiddleton33/RoveBeacon/discussions)
+- Open a [discussion](https://github.com/RoveIQStudio/Roveiq-blue-dot-navigation-design/discussions)
 - Check existing issues for similar questions
 
 Thank you for contributing!
