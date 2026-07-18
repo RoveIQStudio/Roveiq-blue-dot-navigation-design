@@ -414,7 +414,7 @@ export class GeolocationProvider implements LocationSource {
         }
       }, this.options.timeout + 1000);
 
-      this.watchId = navigator.geolocation.watchPosition(
+      const id = navigator.geolocation.watchPosition(
         (position) => {
           this.handlePositionUpdate(position);
 
@@ -449,6 +449,20 @@ export class GeolocationProvider implements LocationSource {
           timeout: this.options.timeout,
         }
       );
+
+      // watchPosition may invoke a callback synchronously (e.g. an immediate
+      // permission-denied on the first tick). If we were already settled before
+      // the id came back, the watch we just created is orphaned — clearOrphanedWatch()
+      // ran while this.watchId was still null and no-oped. Clear it here so
+      // isWatching() stays truthful and a later start() can retry; only adopt the
+      // id when the start is still pending.
+      if (resolved) {
+        if (typeof navigator !== 'undefined' && navigator.geolocation) {
+          navigator.geolocation.clearWatch(id);
+        }
+      } else {
+        this.watchId = id;
+      }
     });
   }
 

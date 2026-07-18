@@ -780,6 +780,8 @@ describe('GeolocationProvider', () => {
             vi.stubGlobal('navigator', { geolocation: { watchPosition, clearWatch } });
 
             const timeoutProvider = new GeolocationProvider({ timeout: 10000 });
+            const errorSpy = vi.fn();
+            timeoutProvider.on('error', errorSpy);
             const startAttempt = timeoutProvider.start();
             const rejection = expect(startAttempt).rejects.toMatchObject({
                 code: RoveErrorCode.TIMEOUT,
@@ -791,6 +793,7 @@ describe('GeolocationProvider', () => {
             await vi.advanceTimersByTimeAsync(10000);
             expect(clearWatch).not.toHaveBeenCalled();
             expect(timeoutProvider.isWatching()).toBe(true);
+            expect(errorSpy).not.toHaveBeenCalled();
 
             // Cross the options.timeout + 1000 deadline -> now it times out.
             await vi.advanceTimersByTimeAsync(1000);
@@ -798,6 +801,10 @@ describe('GeolocationProvider', () => {
 
             expect(clearWatch).toHaveBeenCalledWith(42);
             expect(timeoutProvider.isWatching()).toBe(false);
+            // Timeout path emits the error event (before rejecting), not only rejects.
+            expect(errorSpy).toHaveBeenCalledWith(
+                expect.objectContaining({ code: RoveErrorCode.TIMEOUT })
+            );
 
             // Retry must reach watchPosition again (old bug: watchId stayed set, start() no-oped).
             void timeoutProvider.start().catch(() => { });
@@ -805,6 +812,73 @@ describe('GeolocationProvider', () => {
             expect(watchPosition).toHaveBeenCalledTimes(2);
 
             timeoutProvider.dispose();
+        });
+    });
+
+    describe('start() error callback hygiene', () => {
+        it('clears the orphaned watch when the error callback fires asynchronously, then allows retry', async () => {
+            const clearWatch = vi.fn();
+            const geoError = {
+                code: 2, // POSITION_UNAVAILABLE
+                message: 'Position unavailable',
+                PERMISSION_DENIED: 1,
+                POSITION_UNAVAILABLE: 2,
+                TIMEOUT: 3,
+            };
+            // Deliver the error on a later tick, after watchPosition has returned and
+            // this.watchId has been assigned (mirrors real browser callback timing).
+            const watchPosition = vi.fn().mockImplementation((_success, error) => {
+                setTimeout(() => error(geoError), 0);
+                return 7;
+            });
+            vi.stubGlobal('navigator', { geolocation: { watchPosition, clearWatch } });
+
+            const errProvider = new GeolocationProvider();
+            const startAttempt = errProvider.start();
+            const rejection = expect(startAttempt).rejects.toMatchObject({
+                code: RoveErrorCode.GPS_SIGNAL_LOST,
+            });
+
+            await vi.runAllTimersAsync();
+            await rejection;
+
+            expect(clearWatch).toHaveBeenCalledWith(7);
+            expect(errProvider.isWatching()).toBe(false);
+
+            // Retry must reach watchPosition again (dead watch must not block a retry).
+            void errProvider.start().catch(() => { });
+            await vi.runAllTimersAsync();
+            expect(watchPosition).toHaveBeenCalledTimes(2);
+
+            errProvider.dispose();
+        });
+
+        it('does not retain the watch id when the error callback fires synchronously', async () => {
+            const clearWatch = vi.fn();
+            // Deliver the error synchronously, before watchPosition returns its id.
+            const watchPosition = vi.fn().mockImplementation((_success, error) => {
+                error({
+                    code: 1, // PERMISSION_DENIED
+                    message: 'User denied',
+                    PERMISSION_DENIED: 1,
+                    POSITION_UNAVAILABLE: 2,
+                    TIMEOUT: 3,
+                });
+                return 99;
+            });
+            vi.stubGlobal('navigator', { geolocation: { watchPosition, clearWatch } });
+
+            const syncProvider = new GeolocationProvider();
+            await expect(syncProvider.start()).rejects.toMatchObject({
+                code: RoveErrorCode.PERMISSION_DENIED,
+            });
+
+            // The synchronously-delivered watch id must not be adopted; isWatching()
+            // must be truthful and the orphaned watch cleared.
+            expect(syncProvider.isWatching()).toBe(false);
+            expect(clearWatch).toHaveBeenCalledWith(99);
+
+            syncProvider.dispose();
         });
     });
 });
