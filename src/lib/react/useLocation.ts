@@ -2,10 +2,16 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { GeolocationProvider } from '../GeolocationProvider';
 import type { LocationData, GeolocationOptions, PermissionState } from '../types';
 import type { LocationSource } from '../sources';
+import type { RoveError } from '../errors';
 
 export interface UseLocationOptions extends GeolocationOptions {
   /**
-   * Custom location source (for testing or replay)
+   * Custom location source (for testing or replay).
+   *
+   * When provided, the caller owns the source: on unmount the hook neither
+   * stops nor disposes it (it only unsubscribes its own listeners). When
+   * omitted, the hook creates and owns an internal GeolocationProvider and
+   * stops + disposes it.
    */
   locationSource?: LocationSource;
 
@@ -27,7 +33,7 @@ export interface UseLocationResult {
   location: LocationData | null;
 
   /** Last error that occurred */
-  error: Error | null;
+  error: RoveError | null;
 
   /** Current permission state */
   permission: PermissionState;
@@ -87,7 +93,7 @@ export function useLocation(options: UseLocationOptions = {}): UseLocationResult
   } = options;
 
   const [location, setLocation] = useState<LocationData | null>(null);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<RoveError | null>(null);
   const [permission, setPermission] = useState<PermissionState>('prompt');
   const [isTracking, setIsTracking] = useState(false);
   const [isRequesting, setIsRequesting] = useState(false);
@@ -97,31 +103,33 @@ export function useLocation(options: UseLocationOptions = {}): UseLocationResult
 
   // Create provider on mount
   useEffect(() => {
+    const ownsProvider = !locationSource;
     const provider = locationSource ?? new GeolocationProvider(geolocationOptions);
     providerRef.current = provider;
+    const unsubscribers: Array<() => void> = [];
 
     // Wire up events
-    provider.on('update', (loc) => {
+    unsubscribers.push(provider.on('update', (loc) => {
       setLocation(loc);
       setError(null);
-    });
+    }));
 
-    provider.on('error', (err) => {
-      setError(err as Error);
-    });
+    unsubscribers.push(provider.on('error', (err) => {
+      setError(err as RoveError);
+    }));
 
-    provider.on('permissionChange', (state) => {
+    unsubscribers.push(provider.on('permissionChange', (state) => {
       setPermission(state);
       if (state === 'requesting') {
         setIsRequesting(true);
       } else {
         setIsRequesting(false);
       }
-    });
+    }));
 
     // Device orientation for compass
     if (enableCompass && provider instanceof GeolocationProvider) {
-      provider.on('deviceOrientation', (event) => {
+      unsubscribers.push(provider.on('deviceOrientation', (event) => {
         let heading: number | null = null;
         if ((event as any).webkitCompassHeading !== undefined) {
           heading = (event as any).webkitCompassHeading;
@@ -129,7 +137,7 @@ export function useLocation(options: UseLocationOptions = {}): UseLocationResult
           heading = (360 - event.alpha) % 360;
         }
         setDeviceHeading(heading);
-      });
+      }));
     }
 
     // Auto-start if requested
@@ -140,14 +148,17 @@ export function useLocation(options: UseLocationOptions = {}): UseLocationResult
           provider.startDeviceOrientation();
         }
       }).catch((err) => {
-        setError(err);
+        setError(err as RoveError);
       });
     }
 
     // Cleanup on unmount
     return () => {
-      provider.stop();
-      provider.dispose();
+      for (const unsubscribe of unsubscribers) unsubscribe();
+      if (ownsProvider) {
+        provider.stop();
+        provider.dispose();
+      }
       providerRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -166,7 +177,7 @@ export function useLocation(options: UseLocationOptions = {}): UseLocationResult
         provider.startDeviceOrientation();
       }
     } catch (err) {
-      setError(err as Error);
+      setError(err as RoveError);
       throw err;
     }
   }, [enableCompass]);
@@ -189,7 +200,7 @@ export function useLocation(options: UseLocationOptions = {}): UseLocationResult
     try {
       await provider.requestDeviceOrientationPermission();
     } catch (err) {
-      setError(err as Error);
+      setError(err as RoveError);
       throw err;
     }
   }, []);

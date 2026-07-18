@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useLocation } from './useLocation';
+import { GeolocationProvider } from '../GeolocationProvider';
 import type { LocationSource } from '../sources';
 import type { LocationData } from '../types';
 
@@ -265,18 +266,33 @@ describe('useLocation', () => {
     });
 
     describe('cleanup', () => {
-        it('stops and disposes on unmount', async () => {
-            const stopSpy = vi.spyOn(mockSource, 'stop');
-            const disposeSpy = vi.spyOn(mockSource, 'dispose');
+        // Ownership: the hook only tears down a provider it created itself.
+        // (An injected locationSource is the caller's to dispose — covered by
+        // the "does not dispose an injected locationSource" test below.)
+        it('stops and disposes a hook-owned provider on unmount', () => {
+            const stopSpy = vi.spyOn(GeolocationProvider.prototype, 'stop');
+            const disposeSpy = vi.spyOn(GeolocationProvider.prototype, 'dispose');
 
-            const { unmount } = renderHook(() =>
-                useLocation({ locationSource: mockSource })
-            );
+            // No locationSource -> the hook creates and owns a GeolocationProvider.
+            const { unmount } = renderHook(() => useLocation());
 
             unmount();
 
             expect(stopSpy).toHaveBeenCalled();
             expect(disposeSpy).toHaveBeenCalled();
+
+            stopSpy.mockRestore();
+            disposeSpy.mockRestore();
+        });
+
+        it('does not dispose an injected locationSource on unmount', () => {
+            const source = new MockLocationSource();
+            const disposeSpy = vi.spyOn(source, 'dispose');
+            const { unmount } = renderHook(() =>
+                useLocation({ locationSource: source })
+            );
+            unmount();
+            expect(disposeSpy).not.toHaveBeenCalled();
         });
     });
 
