@@ -15,7 +15,7 @@ import type { LocationSource } from '../sources';
  * - Frame-rate independent animation loop
  * - Proper cleanup and resource management
  * - Thread-safe start/stop operations
- * - Concurrent start() protection with timeout
+ * - Concurrent start() protection via promise mutex
  *
  * @example
  * ```typescript
@@ -42,10 +42,12 @@ export class ThreeYouAreHereController {
 
   private animationId: number | null = null;
   private isStarted = false;
-  private isStarting = false; // Mutex for concurrent start() protection
   private isDisposed = false;
   private isStopping = false; // Flag to stop animation loop cleanly
   private currentScene: THREE.Scene | null = null;
+  private readonly ownsLocationSource: boolean;
+  private readonly unsubscribers: Array<() => void> = [];
+  private startPromise: Promise<void> | null = null;
 
   constructor(options: YouAreHereControllerOptions) {
     this.options = options;
@@ -74,9 +76,10 @@ export class ThreeYouAreHereController {
 
     // Use injected source or create default GeolocationProvider
     this.geolocation = options.locationSource ?? new GeolocationProvider(options.geolocationOptions);
+    this.ownsLocationSource = !options.locationSource;
 
     // Wire up location updates to marker
-    this.geolocation.on('update', (location) => {
+    this.unsubscribers.push(this.geolocation.on('update', (location) => {
       if (this.isDisposed) return;
 
       // IMPORTANT: Pass altitude as 0 to lngLatToScene because the scale factor
@@ -102,24 +105,24 @@ export class ThreeYouAreHereController {
       this.marker.setAccuracy(location.accuracy);
       this.marker.setHeading(location.heading, location.speed);
       options.onUpdate?.(location);
-    });
+    }));
 
     // Wire up error handling
-    this.geolocation.on('error', (error) => {
+    this.unsubscribers.push(this.geolocation.on('error', (error) => {
       if (this.isDisposed) return;
       options.onError?.(error as Error);
-    });
+    }));
 
     // Wire up permission changes
-    this.geolocation.on('permissionChange', (state) => {
+    this.unsubscribers.push(this.geolocation.on('permissionChange', (state) => {
       if (this.isDisposed) return;
       options.onPermissionChange?.(state);
-    });
+    }));
 
     // Wire up device orientation (compass)
     // Note: The marker's setDeviceHeading() handles smoothing internally,
     // so we pass the raw heading values directly without pre-smoothing
-    this.geolocation.on('deviceOrientation', (event) => {
+    this.unsubscribers.push(this.geolocation.on('deviceOrientation', (event) => {
       if (this.isDisposed) return;
 
       // Calculate compass heading from device orientation event
@@ -139,14 +142,14 @@ export class ThreeYouAreHereController {
 
       // Pass raw heading - marker handles smoothing
       this.marker.setDeviceHeading(heading);
-    });
+    }));
 
     // Wire up visibility resume - reset staleness timer so marker doesn't
     // immediately show "lost" state while waiting for GPS to get a new fix
-    this.geolocation.on('resume', () => {
+    this.unsubscribers.push(this.geolocation.on('resume', () => {
       if (this.isDisposed) return;
       this.marker.resetStalenessTimer();
-    });
+    }));
   }
 
   /**
@@ -179,33 +182,24 @@ export class ThreeYouAreHereController {
       return;
     }
 
-    // Prevent concurrent start() race condition
-    if (this.isStarting) {
-      // Wait for the existing start to complete (with timeout)
-      return new Promise((resolve, reject) => {
-        let attempts = 0;
-        const maxAttempts = 100; // 5 second timeout (100 * 50ms)
-        const checkInterval = setInterval(() => {
-          attempts++;
-          if (attempts > maxAttempts) {
-            clearInterval(checkInterval);
-            reject(new Error('ThreeYouAreHereController: Start timed out waiting for concurrent operation'));
-            return;
-          }
-          if (!this.isStarting) {
-            clearInterval(checkInterval);
-            if (this.isStarted) {
-              resolve();
-            } else {
-              reject(new Error('ThreeYouAreHereController: Start failed'));
-            }
-          }
-        }, 50);
-      });
+    // Promise-based mutex: if start is already in progress, return the same promise
+    if (this.startPromise !== null) {
+      return this.startPromise;
     }
 
-    this.isStarting = true;
+    this.startPromise = this.doStart(scene);
 
+    try {
+      await this.startPromise;
+    } finally {
+      this.startPromise = null;
+    }
+  }
+
+  /**
+   * Internal start implementation
+   */
+  private async doStart(scene: THREE.Scene): Promise<void> {
     try {
       this.currentScene = scene;
       scene.add(this.marker);
@@ -228,8 +222,6 @@ export class ThreeYouAreHereController {
       scene.remove(this.marker);
       this.currentScene = null;
       throw error;
-    } finally {
-      this.isStarting = false;
     }
   }
 
@@ -310,7 +302,19 @@ export class ThreeYouAreHereController {
     this.isDisposed = true;
     this.isStopping = true;
     this.stopAnimation();
-    this.geolocation.dispose();
+
+    // Detach our listeners regardless of ownership
+    for (const unsubscribe of this.unsubscribers) unsubscribe();
+    this.unsubscribers.length = 0;
+
+    // Only destroy the source if we created it — injected sources belong to the caller
+    if (this.ownsLocationSource) {
+      this.geolocation.dispose();
+    }
+
+    if (this.currentScene) {
+      this.currentScene.remove(this.marker);
+    }
     this.marker.dispose();
     this.currentScene = null;
   }

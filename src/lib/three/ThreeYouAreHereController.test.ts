@@ -294,7 +294,7 @@ describe('ThreeYouAreHereController', () => {
             // Start first call
             const start1 = controller.start(scene);
 
-            // Let isStarting become true
+            // Let the in-progress start promise settle into the mutex
             await vi.advanceTimersByTimeAsync(10);
 
             // Start second call (should wait)
@@ -373,10 +373,29 @@ describe('ThreeYouAreHereController', () => {
             });
         });
 
-        it('disposes geolocation provider', () => {
+        it('does not dispose an injected geolocation provider (caller owns it)', () => {
             controller.dispose();
 
-            expect(mockSource.disposeCalled).toBe(true);
+            // BREAKING (v3): injected sources belong to the caller and are not disposed
+            expect(mockSource.disposeCalled).toBe(false);
+        });
+
+        it('disposes an owned geolocation provider (created internally)', () => {
+            vi.stubGlobal('navigator', {
+                geolocation: {
+                    watchPosition: vi.fn(() => 123),
+                    clearWatch: vi.fn(),
+                },
+            });
+
+            const ownedController = new ThreeYouAreHereController({
+                center: defaultCenter,
+            });
+            const disposeSpy = vi.spyOn(ownedController.geolocation, 'dispose');
+
+            ownedController.dispose();
+
+            expect(disposeSpy).toHaveBeenCalled();
         });
 
         it('sets isActive to false', async () => {
@@ -860,5 +879,36 @@ describe('default orientation consistency (y-up regression)', () => {
         expect(controller.marker.position.z).toBeLessThan(0);
 
         controller.dispose();
+    });
+});
+
+describe('controller resource ownership', () => {
+    it('does not dispose an injected LocationSource, but detaches its own listeners', () => {
+        const source = new MockLocationSource();
+        const disposeSpy = vi.spyOn(source, 'dispose');
+
+        const controller = new ThreeYouAreHereController({ center: [0, 0], locationSource: source });
+        controller.dispose();
+
+        expect(disposeSpy).not.toHaveBeenCalled();
+        // Listeners are detached: an update after dispose must not move the marker
+        const positionBefore = controller.marker.position.clone();
+        source.emitUpdate({
+            longitude: 0.001, latitude: 0.001, altitude: null, accuracy: 5,
+            speed: null, heading: null, timestamp: Date.now(),
+        });
+        expect(controller.marker.position.equals(positionBefore)).toBe(true);
+    });
+
+    it('removes the marker from the scene on dispose', async () => {
+        const source = new MockLocationSource();
+        const controller = new ThreeYouAreHereController({ center: [0, 0], locationSource: source });
+        const scene = new THREE.Scene();
+
+        await controller.start(scene);
+        expect(scene.children).toContain(controller.marker);
+
+        controller.dispose();
+        expect(scene.children).not.toContain(controller.marker);
     });
 });
