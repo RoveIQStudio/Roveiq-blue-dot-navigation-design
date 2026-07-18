@@ -2,6 +2,51 @@
 
 All notable changes to the "rovemaps-you-are-here" project will be documented in this file.
 
+## [3.0.0] - 2026-07-18
+
+A correctness-and-packaging release. The runtime API of the controllers and markers is unchanged; the breaking changes are about imports, packaging, and types. See the "Migrating from 2.x" section of the README for an upgrade summary.
+
+### Breaking Changes
+- React hooks moved to `rovemaps-you-are-here/react`; the Svelte store moved to `rovemaps-you-are-here/svelte`. They are no longer re-exported from the package root.
+- UMD bundle removed. Use the ESM build from a CDN with `<script type="module">`.
+- `useYouAreHere().marker` is now `ThreeUserMarker | null` — the marker is created inside a mount effect (never during render), so React StrictMode's discarded first render cannot leak GPU resources. Guard for null before rendering it.
+- `error` in both React hooks (`useYouAreHere`, `useLocation`) and the Svelte store is now typed `RoveError | null`; the `onError` callback receives a `RoveError`.
+- React hook options other than `center`, `scale`, and `locationSource` are read once at mount; changing them later requires remounting the component.
+- Controllers no longer dispose an injected `locationSource` — the caller owns injected sources.
+- `svelte` is now an optional `peerDependency` (`>=4.0.0`); install it only if you use the Svelte store.
+- Removed unwired exports: `FrameMonitor`, `AnimationManager` (and their option/stat types).
+- Removed never-emitted error codes: `PERMISSION_DISMISSED`, `PERMISSION_UNAVAILABLE`, `SENSORS_UNAVAILABLE`, `NETWORK_ERROR`, `INVALID_CONFIGURATION`, `NOT_INITIALIZED`, `ALREADY_STARTED`.
+
+### Fixed
+- Default (`y-up`) Three.js path positioned the marker on the wrong axis.
+- React was inlined into the published bundle, breaking React consumers with "Invalid hook call".
+- `GeolocationProvider.stop()` while the tab was hidden let tracking silently resume on tab return.
+- Start timeout no longer strands a live GPS watch or blocks retries; it now derives from `options.timeout`.
+- Recoloring one marker could dispose shared cached materials used by other markers.
+- Marker `dispose()` now releases the detached swap geometry, border material, and direction cone.
+- Alert (warning/danger) state restores correctly when `pulseSpeed` is 0.
+- MapLibre/MapBox markers reset staleness on tab-visibility resume (no more "lost" flash).
+- MapBox marker honors QualityManager settings and accepts an injected `mapBoxModule` for bundlers.
+- Accuracy ring re-renders on map zoom when pulsing is disabled.
+- Svelte store auto-disposes with its component and emits valid error codes.
+- Logger (including the exported `logger` singleton) now respects `productionMode` lazily — silent by default in production unless `silent: false` is set explicitly, even when `configureSDK({ productionMode: true })` runs after the logger is created.
+
+### Added
+- ESLint (flat config) with CI enforcement; `no-console` in library code.
+- `npm run verify:dist` gate: publish fails if framework code is ever bundled again.
+- LICENSE file, repository metadata, and enforced coverage thresholds (statements 77% / branches 69% / functions 84% / lines 79%).
+- `resetStalenessTimer()` public method on the MapLibre and MapBox markers.
+- `mapBoxModule` option on `MapBoxUserMarker` for bundler dependency injection (mirrors `mapLibreModule`).
+- `getOrientation()` accessor on `ThreeUserMarker` (returns `'y-up' | 'z-up'`).
+- Svelte store state gains `isTracking` and `deviceHeading` fields.
+
+### Known open questions
+- **Package naming.** The repo (`RoveBeacon`), the published package (`rovemaps-you-are-here`), and the CLI (`create-rovebeacon`) use three different names. Reconciling them is an npm-ecosystem decision (deprecations, redirects) and is intentionally deferred — nothing was renamed in this release.
+
+### CDN (ESM)
+- jsDelivr: `https://cdn.jsdelivr.net/npm/rovemaps-you-are-here@3/dist/index.js`
+- unpkg: `https://unpkg.com/rovemaps-you-are-here@3/dist/index.js`
+
 ## [2.5.0] - 2025-12-11
 
 ### New Features

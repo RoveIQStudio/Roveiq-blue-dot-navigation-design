@@ -110,24 +110,50 @@ await controller.start(scene);
 npm install rovemaps-you-are-here
 ```
 
-### CDN
+### CDN (ESM)
+
+The package ships as ES modules only. Load it in the browser with an import map so
+the `three` peer dependency resolves to a single instance:
 
 ```html
-<!-- Three.js (peer dependency) -->
-<script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.181.0/build/three.module.js"
+    }
+  }
+</script>
+<script type="module">
+  import { ThreeYouAreHereController } from 'https://cdn.jsdelivr.net/npm/rovemaps-you-are-here@3/dist/index.js';
 
-<!-- RoveMaps YouAreHere -->
-<script src="https://unpkg.com/rovemaps-you-are-here@2.2.0/dist/rovemaps-you-are-here.umd.cjs"></script>
-
-<script>
-  const { ThreeYouAreHereController } = RoveMapsYouAreHere;
+  const controller = new ThreeYouAreHereController({ center: [-74.006, 40.7128] });
+  // await controller.start(scene);
 </script>
 ```
 
-| CDN | URL |
-|-----|-----|
-| unpkg | `https://unpkg.com/rovemaps-you-are-here@2.2.0/dist/rovemaps-you-are-here.umd.cjs` |
-| jsDelivr | `https://cdn.jsdelivr.net/npm/rovemaps-you-are-here@2.2.0/dist/rovemaps-you-are-here.umd.cjs` |
+| CDN | ESM entry |
+|-----|-----------|
+| jsDelivr | `https://cdn.jsdelivr.net/npm/rovemaps-you-are-here@3/dist/index.js` |
+| unpkg | `https://unpkg.com/rovemaps-you-are-here@3/dist/index.js` |
+
+> The UMD/global `<script>` build was removed in v3. Use `<script type="module">` with the ESM build above.
+
+---
+
+## Migrating from 2.x
+
+v3.0.0 is a correctness-and-packaging release. The runtime API of the controllers and markers is unchanged; the breaking changes are about imports, packaging, and types.
+
+- **React hooks moved to a subpath.** Import `useYouAreHere` / `useLocation` from `rovemaps-you-are-here/react`. The Svelte store moved to `rovemaps-you-are-here/svelte`. Neither is re-exported from the package root anymore.
+- **UMD bundle removed.** Load the ESM build from a CDN with `<script type="module">` (see [CDN (ESM)](#cdn-esm)).
+- **`useYouAreHere().marker` is now `ThreeUserMarker | null`.** The marker is created after mount (StrictMode-safe), so guard for null before rendering it.
+- **`error` is now `RoveError | null`** in both React hooks and the Svelte store.
+- **Injected `locationSource` is no longer disposed by the SDK.** If you pass your own source, you own its lifecycle.
+- **Removed unwired exports** `FrameMonitor` and `AnimationManager` (and their option/stat types).
+- **Removed never-emitted error codes:** `PERMISSION_DISMISSED`, `PERMISSION_UNAVAILABLE`, `SENSORS_UNAVAILABLE`, `NETWORK_ERROR`, `INVALID_CONFIGURATION`, `NOT_INITIALIZED`, `ALREADY_STARTED`.
+- **`svelte` is now an optional peer dependency** (`>=4.0.0`); install it only if you use the Svelte store.
+
+See the [CHANGELOG](./CHANGELOG.md) for the full list of fixes and additions.
 
 ---
 
@@ -203,7 +229,7 @@ map.on('load', async () => {
 
 ```tsx
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { useYouAreHere } from 'rovemaps-you-are-here';
+import { useYouAreHere } from 'rovemaps-you-are-here/react';
 
 function YouAreHereMarker() {
   const { camera } = useThree();
@@ -221,6 +247,9 @@ function YouAreHereMarker() {
     update(delta, camera);
   });
 
+  // `marker` is `ThreeUserMarker | null` — it is created inside a mount effect
+  // (StrictMode-safe), so guard for null before rendering it.
+  if (!marker) return null;
   return <primitive object={marker} />;
 }
 
@@ -234,14 +263,41 @@ function App() {
 }
 ```
 
-**Available React Hooks:**
+**Available React Hooks** (import from `rovemaps-you-are-here/react`):
 
 | Hook | Description |
 |------|-------------|
-| `useYouAreHere` | Full marker + geolocation integration for Three.js |
-| `useLocation` | Standalone geolocation hook (no marker) |
+| `useYouAreHere` | Full marker + geolocation integration for Three.js. `marker` is `ThreeUserMarker \| null` (guard before rendering); `error` is `RoveError \| null`. |
+| `useLocation` | Standalone geolocation hook (no marker). `error` is `RoveError \| null`. |
+
+> Options other than `center` / `scale` / `locationSource` are read once at mount — changing them later requires remounting the component.
 
 See [examples/react](./examples/react) for a complete working example.
+
+### Svelte
+
+```svelte
+<script lang="ts">
+  import { createLocationStore } from 'rovemaps-you-are-here/svelte';
+
+  // Created inside a component, the store auto-disposes on destroy.
+  const location = createLocationStore({ enableHighAccuracy: true });
+</script>
+
+<button on:click={() => location.start()}>Start</button>
+<button on:click={() => location.stop()}>Stop</button>
+
+{#if $location.error}
+  <p>Error: {$location.error.message}</p>   <!-- error is RoveError | null -->
+{:else if $location.location}
+  <p>Lat: {$location.location.latitude.toFixed(6)}</p>
+  <p>Lng: {$location.location.longitude.toFixed(6)}</p>
+  {#if $location.isTracking}<p>Tracking…</p>{/if}
+  {#if $location.deviceHeading !== null}<p>Heading: {$location.deviceHeading.toFixed(0)}°</p>{/if}
+{/if}
+```
+
+The Svelte store state exposes `location`, `error` (`RoveError | null`), `permission`, `loading`, `isTracking`, and `deviceHeading`.
 
 ---
 
@@ -458,6 +514,7 @@ controller.geolocation.on('error', (error) => {
 | `GEOLOCATION_UNSUPPORTED` | Browser doesn't support geolocation |
 | `INSECURE_CONTEXT` | HTTPS required for geolocation |
 | `INVALID_COORDINATES` | Invalid latitude/longitude values |
+| `INTERNAL_ERROR` | Unexpected internal failure |
 
 ---
 

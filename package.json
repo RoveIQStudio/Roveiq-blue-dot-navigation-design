@@ -1,6 +1,6 @@
 {
   "name": "rovemaps-you-are-here",
-  "version": "2.5.0",
+  "version": "3.0.0",
   "description": "A Three.js and MapLibre GL JS SDK for displaying user location with GPS accuracy and direction indicators",
   "type": "module",
   "main": "./dist/index.cjs",

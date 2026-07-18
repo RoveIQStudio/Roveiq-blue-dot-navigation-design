@@ -10,7 +10,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.json"
   },
   "dependencies": {
-    "rovemaps-you-are-here": "^2.2.0",
+    "rovemaps-you-are-here": "^3.0.0",
     "three": "^0.170.0"
   },
   "devDependencies": {
