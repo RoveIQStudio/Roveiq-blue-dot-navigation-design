@@ -31,6 +31,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:lib": "vite build --config vite.lib.config.ts && tsc -p tsconfig.lib.json",
+    "verify:dist": "node scripts/verify-dist.mjs",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
     "lint": "eslint .",
