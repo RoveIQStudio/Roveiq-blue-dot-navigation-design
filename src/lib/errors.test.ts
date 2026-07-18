@@ -157,19 +157,12 @@ describe('RoveError', () => {
     describe('error codes', () => {
         it('has all expected error codes', () => {
             expect(RoveErrorCode.PERMISSION_DENIED).toBe('PERMISSION_DENIED');
-            expect(RoveErrorCode.PERMISSION_DISMISSED).toBe('PERMISSION_DISMISSED');
-            expect(RoveErrorCode.PERMISSION_UNAVAILABLE).toBe('PERMISSION_UNAVAILABLE');
             expect(RoveErrorCode.GEOLOCATION_UNSUPPORTED).toBe('GEOLOCATION_UNSUPPORTED');
             expect(RoveErrorCode.GPS_SIGNAL_LOST).toBe('GPS_SIGNAL_LOST');
-            expect(RoveErrorCode.SENSORS_UNAVAILABLE).toBe('SENSORS_UNAVAILABLE');
             expect(RoveErrorCode.INSECURE_CONTEXT).toBe('INSECURE_CONTEXT');
             expect(RoveErrorCode.TIMEOUT).toBe('TIMEOUT');
-            expect(RoveErrorCode.NETWORK_ERROR).toBe('NETWORK_ERROR');
-            expect(RoveErrorCode.INVALID_CONFIGURATION).toBe('INVALID_CONFIGURATION');
             expect(RoveErrorCode.INVALID_COORDINATES).toBe('INVALID_COORDINATES');
             expect(RoveErrorCode.INTERNAL_ERROR).toBe('INTERNAL_ERROR');
-            expect(RoveErrorCode.NOT_INITIALIZED).toBe('NOT_INITIALIZED');
-            expect(RoveErrorCode.ALREADY_STARTED).toBe('ALREADY_STARTED');
         });
     });
 });

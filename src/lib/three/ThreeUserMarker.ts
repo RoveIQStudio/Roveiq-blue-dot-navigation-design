@@ -181,7 +181,6 @@ export class ThreeUserMarker extends THREE.Group {
   private manualConfidenceOverride = false; // If true, auto-confidence is disabled
   private lastPositionUpdateTime = 0; // Timestamp of last position update for staleness detection
   private lostStateStartTime = 0; // When "lost" state began (for grow animation)
-  private lostGrowDuration = 60000; // 60 seconds to reach max size
 
   // Geometry references for swapping between ring (normal) and circle (lost)
   private ringGeometry!: THREE.RingGeometry;
@@ -255,10 +254,8 @@ export class ThreeUserMarker extends THREE.Group {
     };
   }
 
-  /*
-   * @deprecated Private method refactored to use createMaterials and build mesh in constructor or init
-   * But wait, createMarker was called in constructor. We must restore the mesh creation logic
-   * that was deleted/replaced incorrectly.
+  /**
+   * Build all meshes. Called once from the constructor.
    */
   private createMarker(): void {
     this.createMaterials();
