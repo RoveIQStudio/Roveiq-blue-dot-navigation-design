@@ -3,19 +3,25 @@
   "version": "2.5.0",
   "description": "A Three.js and MapLibre GL JS SDK for displaying user location with GPS accuracy and direction indicators",
   "type": "module",
-  "main": "./dist/rovemaps-you-are-here.umd.cjs",
-  "module": "./dist/rovemaps-you-are-here.js",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "types": "./dist/lib/index.d.ts",
+  "sideEffects": false,
   "exports": {
     ".": {
       "types": "./dist/lib/index.d.ts",
-      "import": "./dist/rovemaps-you-are-here.js",
-      "require": "./dist/rovemaps-you-are-here.umd.cjs"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     },
     "./react": {
       "types": "./dist/lib/react/index.d.ts",
-      "import": "./dist/rovemaps-you-are-here.js",
-      "require": "./dist/rovemaps-you-are-here.umd.cjs"
+      "import": "./dist/react.js",
+      "require": "./dist/react.cjs"
+    },
+    "./svelte": {
+      "types": "./dist/lib/svelte/index.d.ts",
+      "import": "./dist/svelte.js",
+      "require": "./dist/svelte.cjs"
     }
   },
   "files": [
@@ -35,23 +41,16 @@
     "size:check": "size-limit --why"
   },
   "size-limit": [
-    {
-      "name": "ESM bundle",
-      "path": "dist/rovemaps-you-are-here.js",
-      "limit": "40 KB",
-      "gzip": true
-    },
-    {
-      "name": "UMD bundle",
-      "path": "dist/rovemaps-you-are-here.umd.cjs",
-      "limit": "30 KB",
-      "gzip": true
-    }
+    { "name": "Core ESM", "path": "dist/index.js", "limit": "40 KB", "gzip": true },
+    { "name": "Core CJS", "path": "dist/index.cjs", "limit": "40 KB", "gzip": true },
+    { "name": "React entry", "path": "dist/react.js", "limit": "40 KB", "gzip": true },
+    { "name": "Svelte entry", "path": "dist/svelte.js", "limit": "10 KB", "gzip": true }
   ],
   "peerDependencies": {
     "@react-three/fiber": ">=8.0.0",
     "maplibre-gl": ">=3.0.0",
     "react": ">=18.0.0",
+    "svelte": ">=4.0.0",
     "three": ">=0.150.0"
   },
   "peerDependenciesMeta": {
@@ -62,6 +61,9 @@
       "optional": true
     },
     "react": {
+      "optional": true
+    },
+    "svelte": {
       "optional": true
     },
     "@react-three/fiber": {

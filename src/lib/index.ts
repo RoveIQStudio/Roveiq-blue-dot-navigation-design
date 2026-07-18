@@ -53,18 +53,6 @@ export { RoveError, RoveErrorCode } from './errors';
 export type { ErrorContext } from './errors';
 export type { LocationSource } from './sources';
 
-// Svelte Helpers
-export { createLocationStore } from './svelte';
-
-// React Helpers (also available via 'rovemaps-you-are-here/react')
-export { useLocation, useYouAreHere } from './react';
-export type {
-  UseLocationOptions,
-  UseLocationResult,
-  UseYouAreHereOptions,
-  UseYouAreHereResult,
-} from './react';
-
 // Types
 export type {
   UserMarkerOptions,
