@@ -161,8 +161,10 @@ export function useLocation(options: UseLocationOptions = {}): UseLocationResult
       }
       providerRef.current = null;
     };
+    // Re-wire (and re-decide ownership) when the injected source identity
+    // changes; other option changes require a remount (documented).
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run on mount
+  }, [locationSource]);
 
   const start = useCallback(async () => {
     const provider = providerRef.current;
