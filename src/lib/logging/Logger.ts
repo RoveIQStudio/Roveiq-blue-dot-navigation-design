@@ -5,6 +5,8 @@
  * for integration with external services (Sentry, Datadog, etc.)
  */
 
+import { getSDKConfig } from '../types';
+
 export type LogLevel = 'none' | 'error' | 'warn' | 'info' | 'debug';
 
 const LOG_LEVELS: Record<LogLevel, number> = {
@@ -49,7 +51,7 @@ export interface LoggerOptions {
 
   /**
    * Disable console output (useful when using custom handler only)
-   * @default false
+   * @default the SDK's `productionMode` config (silent in production)
    */
   silent?: boolean;
 }
@@ -87,7 +89,9 @@ export class Logger {
     this.level = options.level ?? 'warn';
     this.prefix = options.prefix ?? 'RoveBeacon';
     this.onLog = options.onLog;
-    this.silent = options.silent ?? false;
+    // Default to the SDK's production mode so library logs stay silent in
+    // production; an explicit `silent` option always wins.
+    this.silent = options.silent ?? getSDKConfig().productionMode ?? false;
   }
 
   /**

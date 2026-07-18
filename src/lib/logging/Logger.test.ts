@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { Logger, ComponentLogger, logger } from './Logger';
+import { configureSDK } from '../types';
 
 describe('Logger', () => {
   let consoleSpy: {
@@ -214,6 +215,34 @@ describe('Logger', () => {
 
       logger.warn('Test', 'Warn message');
       expect(consoleSpy.warn).toHaveBeenCalled();
+    });
+  });
+
+  describe('production mode', () => {
+    it('defaults to silent when the SDK is in production mode', () => {
+      configureSDK({ productionMode: true });
+      try {
+        const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const productionLogger = new Logger();
+        productionLogger.warn('Test', 'should not print');
+        expect(spy).not.toHaveBeenCalled();
+        spy.mockRestore();
+      } finally {
+        configureSDK({ productionMode: false });
+      }
+    });
+
+    it('honors explicit silent:false even in production mode', () => {
+      configureSDK({ productionMode: true });
+      try {
+        const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const loudLogger = new Logger({ silent: false });
+        loudLogger.warn('Test', 'should print');
+        expect(spy).toHaveBeenCalled();
+        spy.mockRestore();
+      } finally {
+        configureSDK({ productionMode: false });
+      }
     });
   });
 });

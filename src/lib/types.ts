@@ -77,6 +77,7 @@ export function getSDKConfig(): Readonly<SDKConfig> {
  */
 export function sdkWarn(message: string, ...args: unknown[]): void {
   if (!sdkConfig.productionMode) {
+    // eslint-disable-next-line no-console -- this is the sanctioned console sink that honors productionMode
     console.warn(`[RoveBeacon] ${message}`, ...args);
   }
 }
@@ -86,6 +87,7 @@ export function sdkWarn(message: string, ...args: unknown[]): void {
  */
 export function sdkDebug(message: string, ...args: unknown[]): void {
   if (!sdkConfig.productionMode && sdkConfig.debug) {
+    // eslint-disable-next-line no-console -- this is the sanctioned console sink that honors productionMode
     console.log(`[RoveBeacon:debug] ${message}`, ...args);
   }
 }

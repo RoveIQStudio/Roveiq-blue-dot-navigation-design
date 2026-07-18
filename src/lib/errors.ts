@@ -77,6 +77,7 @@ export class RoveError extends Error {
    * throw RoveError.emit(
    *   RoveErrorCode.PERMISSION_DENIED,
    *   'User denied location permission',
+   *   undefined,
    *   { component: 'GeolocationProvider', action: 'requestPermission' }
    * );
    * ```
@@ -84,14 +85,14 @@ export class RoveError extends Error {
   static emit(
     code: RoveErrorCode,
     message: string,
-    context: ErrorContext,
-    originalError?: unknown
+    originalError?: unknown,
+    context?: ErrorContext
   ): RoveError {
     const error = new RoveError(code, message, originalError, context);
 
     // Call telemetry hook if configured
     const config = getSDKConfig();
-    if (config.onError) {
+    if (config.onError && context) {
       try {
         config.onError(error, context);
       } catch {

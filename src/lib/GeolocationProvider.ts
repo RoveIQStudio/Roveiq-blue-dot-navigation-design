@@ -152,7 +152,7 @@ export class GeolocationProvider implements LocationSource {
         const response = await (DeviceOrientationEvent as any).requestPermission();
         return response === 'granted' ? 'granted' : 'denied';
       } catch (error) {
-        console.error('Error requesting device orientation permission:', error);
+        sdkWarn('Error requesting device orientation permission:', error);
         return 'denied';
       }
     }

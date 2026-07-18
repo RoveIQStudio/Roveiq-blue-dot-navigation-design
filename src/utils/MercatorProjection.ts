@@ -4,6 +4,7 @@
  */
 
 import { isValidNumber } from './validation';
+import { sdkWarn } from '../lib/types';
 
 /** Maximum valid latitude for Web Mercator projection */
 const MAX_MERCATOR_LATITUDE = 85.05112878;
@@ -88,7 +89,7 @@ export class MercatorProjection {
   lngLatToScene(lng: number, lat: number, altitude: number = 0): [number, number, number] {
     // Validate inputs - return origin for invalid coordinates
     if (!isValidNumber(lng) || !isValidNumber(lat)) {
-      console.warn(`MercatorProjection.lngLatToScene: invalid coordinates (${lng}, ${lat}), returning origin`);
+      sdkWarn(`MercatorProjection.lngLatToScene: invalid coordinates (${lng}, ${lat}), returning origin`);
       return [0, 0, 0];
     }
 
@@ -130,7 +131,7 @@ export class MercatorProjection {
   sceneToLngLat(x: number, y: number, _z?: number): [number, number] {
     // Validate inputs
     if (!isValidNumber(x) || !isValidNumber(y)) {
-      console.warn(`MercatorProjection.sceneToLngLat: invalid coordinates (${x}, ${y}), returning origin`);
+      sdkWarn(`MercatorProjection.sceneToLngLat: invalid coordinates (${x}, ${y}), returning origin`);
       return [0, 0];
     }
 

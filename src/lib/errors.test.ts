@@ -79,6 +79,7 @@ describe('RoveError', () => {
             const error = RoveError.emit(
                 RoveErrorCode.PERMISSION_DENIED,
                 'User denied',
+                undefined,
                 { component: 'GeolocationProvider', action: 'requestPermission' }
             );
 
@@ -95,8 +96,8 @@ describe('RoveError', () => {
             const error = RoveError.emit(
                 RoveErrorCode.INTERNAL_ERROR,
                 'Something failed',
-                { component: 'Test', action: 'test' },
-                originalError
+                originalError,
+                { component: 'Test', action: 'test' }
             );
 
             expect(error.originalError).toBe(originalError);
@@ -107,7 +108,7 @@ describe('RoveError', () => {
             configureSDK({ onError: onErrorSpy });
 
             const context = { component: 'Test', action: 'testing' };
-            const error = RoveError.emit(RoveErrorCode.TIMEOUT, 'Timed out', context);
+            const error = RoveError.emit(RoveErrorCode.TIMEOUT, 'Timed out', undefined, context);
 
             expect(onErrorSpy).toHaveBeenCalledWith(error, context);
         });
@@ -122,6 +123,7 @@ describe('RoveError', () => {
                 RoveError.emit(
                     RoveErrorCode.TIMEOUT,
                     'Timed out',
+                    undefined,
                     { component: 'Test', action: 'test' }
                 );
             }).not.toThrow();
@@ -133,6 +135,7 @@ describe('RoveError', () => {
             const error = RoveError.emit(
                 RoveErrorCode.GPS_SIGNAL_LOST,
                 'Lost signal',
+                undefined,
                 { component: 'GPS', action: 'track' }
             );
 
@@ -143,6 +146,7 @@ describe('RoveError', () => {
             const error = RoveError.emit(
                 RoveErrorCode.INVALID_COORDINATES,
                 'Bad coordinates',
+                undefined,
                 {
                     component: 'Projection',
                     action: 'convert',

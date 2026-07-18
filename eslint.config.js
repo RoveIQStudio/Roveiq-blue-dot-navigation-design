@@ -29,5 +29,15 @@ export default tseslint.config(
     files: ['src/lib/react/**/*.ts'],
     plugins: { 'react-hooks': reactHooks },
     rules: reactHooks.configs.recommended.rules,
+  },
+  {
+    // Library code must route all logging through sdkWarn/sdkDebug (or the
+    // Logger) so `productionMode` suppression is honored. The logging modules
+    // themselves are the sanctioned console sinks.
+    files: ['src/lib/**/*.ts', 'src/utils/**/*.ts'],
+    ignores: ['src/lib/logging/**', '**/*.test.ts'],
+    rules: {
+      'no-console': 'error',
+    },
   }
 );
