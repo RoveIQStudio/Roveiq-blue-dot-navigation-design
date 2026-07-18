@@ -4,6 +4,7 @@ import { renderHook, act, waitFor } from '@testing-library/react';
 import { useYouAreHere } from './useYouAreHere';
 import { ThreeUserMarker } from '../three/ThreeUserMarker';
 import { GeolocationProvider } from '../GeolocationProvider';
+import { RoveError, RoveErrorCode } from '../errors';
 import type { LocationSource } from '../sources';
 import type { LocationData } from '../types';
 
@@ -302,6 +303,18 @@ describe('useYouAreHere', () => {
             expect(result.current.error?.message).toBe('Location unavailable');
         });
 
+        it('wraps a non-RoveError event into a RoveError (INTERNAL_ERROR)', () => {
+            const { result } = renderHook(() => useYouAreHere(getOptions()));
+
+            act(() => {
+                mockSource.simulateError(new Error('boom'));
+            });
+
+            expect(result.current.error).toBeInstanceOf(RoveError);
+            expect(result.current.error?.code).toBe(RoveErrorCode.INTERNAL_ERROR);
+            expect(result.current.error?.message).toBe('boom');
+        });
+
         it('calls onError callback', async () => {
             const onError = vi.fn();
             const { result } = renderHook(() =>
@@ -317,7 +330,13 @@ describe('useYouAreHere', () => {
                 mockSource.simulateError(testError);
             });
 
-            expect(onError).toHaveBeenCalledWith(testError);
+            // The listener wraps non-RoveError events, so onError receives a
+            // RoveError carrying the original message (not the raw Error).
+            expect(onError).toHaveBeenCalledTimes(1);
+            const emitted = onError.mock.calls[0][0];
+            expect(emitted).toBeInstanceOf(RoveError);
+            expect(emitted.code).toBe(RoveErrorCode.INTERNAL_ERROR);
+            expect(emitted.message).toBe('Test error');
         });
     });
 

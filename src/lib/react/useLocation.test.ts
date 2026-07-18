@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useLocation } from './useLocation';
 import { GeolocationProvider } from '../GeolocationProvider';
+import { RoveError, RoveErrorCode } from '../errors';
 import type { LocationSource } from '../sources';
 import type { LocationData } from '../types';
 
@@ -238,6 +239,20 @@ describe('useLocation', () => {
 
             expect(result.current.error).not.toBeNull();
             expect(result.current.error?.message).toBe('Geolocation unavailable');
+        });
+
+        it('wraps a non-RoveError event into a RoveError (INTERNAL_ERROR)', () => {
+            const { result } = renderHook(() =>
+                useLocation({ locationSource: mockSource })
+            );
+
+            act(() => {
+                mockSource.simulateError(new Error('boom'));
+            });
+
+            expect(result.current.error).toBeInstanceOf(RoveError);
+            expect(result.current.error?.code).toBe(RoveErrorCode.INTERNAL_ERROR);
+            expect(result.current.error?.message).toBe('boom');
         });
     });
 

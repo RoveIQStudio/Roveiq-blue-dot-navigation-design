@@ -11,7 +11,7 @@ import type {
   ConfidenceState,
 } from '../types';
 import type { LocationSource } from '../sources';
-import type { RoveError } from '../errors';
+import { RoveError, RoveErrorCode } from '../errors';
 
 export interface UseYouAreHereOptions {
   /**
@@ -230,7 +230,11 @@ export function useYouAreHere(options: UseYouAreHereOptions): UseYouAreHereResul
     }));
 
     unsubscribers.push(provider.on('error', (err) => {
-      const roveError = err as RoveError;
+      // Defensively wrap non-RoveError events (mirrors the Svelte store) so the
+      // `error` state is always a RoveError with a machine-readable code.
+      const roveError = err instanceof RoveError
+        ? err
+        : new RoveError(RoveErrorCode.INTERNAL_ERROR, (err as Error).message ?? String(err));
       setError(roveError);
       onErrorRef.current?.(roveError);
     }));

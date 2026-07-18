@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { GeolocationProvider } from '../GeolocationProvider';
 import type { LocationData, GeolocationOptions, PermissionState } from '../types';
 import type { LocationSource } from '../sources';
-import type { RoveError } from '../errors';
+import { RoveError, RoveErrorCode } from '../errors';
 
 export interface UseLocationOptions extends GeolocationOptions {
   /**
@@ -115,7 +115,12 @@ export function useLocation(options: UseLocationOptions = {}): UseLocationResult
     }));
 
     unsubscribers.push(provider.on('error', (err) => {
-      setError(err as RoveError);
+      // Defensively wrap non-RoveError events (mirrors the Svelte store) so the
+      // `error` state is always a RoveError with a machine-readable code.
+      const roveError = err instanceof RoveError
+        ? err
+        : new RoveError(RoveErrorCode.INTERNAL_ERROR, (err as Error).message ?? String(err));
+      setError(roveError);
     }));
 
     unsubscribers.push(provider.on('permissionChange', (state) => {
