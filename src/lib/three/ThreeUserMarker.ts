@@ -319,7 +319,6 @@ export class ThreeUserMarker extends THREE.Group {
       const layerLength = coneLength * (1 - t * 0.3);
       const layerWidth = coneWidth * (1 - t * 0.5);
       const layerZ = 0.01 + t * 0.005; // Below the dot (0.1-0.12)
-      const layerOpacity = coneOpacity * (1 - t * 0.7);
 
       // Triangle vertices for this layer
       // Vertex 1: origin

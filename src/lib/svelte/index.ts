@@ -1,4 +1,4 @@
-import { writable, type Readable } from 'svelte/store';
+import { writable } from 'svelte/store';
 import { GeolocationProvider } from '../GeolocationProvider';
 import type { LocationData, PermissionState } from '../types';
 import { RoveError } from '../errors';
@@ -47,7 +47,7 @@ export function createLocationStore(options: ConstructorParameters<typeof Geoloc
 
     try {
       await provider.start();
-    } catch (err) {
+    } catch {
       // Error is already handled by 'error' listener above, but start() rejects too
       // We don't need to double-set state here usually
     }

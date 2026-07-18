@@ -9,9 +9,6 @@ import { isValidNumber, normalizeAngleDegrees } from '../../utils/validation';
  */
 const DEFAULT_PULSE_SPEED = 0.3;
 
-const ACCURACY_LOW_THRESHOLD_METERS = 100;
-const ACCURACY_LOST_THRESHOLD_METERS = 500;
-
 /**
  * Priority values for confidence states (higher number = worse confidence)
  */
@@ -66,10 +63,6 @@ const DEFAULT_OPTIONS: Required<Omit<UserMarkerOptions, 'orientation'>> = {
   ringOuterRadius: 35,
   mapLibreModule: null,
 };
-
-function hexToColor(hex: number): string {
-  return '#' + hex.toString(16).padStart(6, '0');
-}
 
 /**
  * MapLibreUserMarker - A MapLibre GL JS marker that displays user location
@@ -678,7 +671,7 @@ export class MapLibreUserMarker {
     // Get colors based on confidence state using cached lookups
     let dotColor = this.getHexColor(this.options.color);
     let ringColor = this.getHexColor(this.options.accuracyRingColor);
-    let borderColor = this.getHexColor(this.options.borderColor);
+    const borderColor = this.getHexColor(this.options.borderColor);
     let coneColor = this.getHexColor(this.options.coneColor);
     let dotOpacity = 1;
 

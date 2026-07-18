@@ -3,7 +3,7 @@
  * EPSG:3857 projection for Three.js compatibility
  */
 
-import { isValidNumber, isValidLongitude, isValidLatitude } from './validation';
+import { isValidNumber } from './validation';
 
 /** Maximum valid latitude for Web Mercator projection */
 const MAX_MERCATOR_LATITUDE = 85.05112878;
@@ -127,7 +127,7 @@ export class MercatorProjection {
    * @param z Scene Z coordinate (optional, for altitude)
    * @returns [longitude, latitude] in degrees, or [0, 0] for invalid input
    */
-  sceneToLngLat(x: number, y: number, z?: number): [number, number] {
+  sceneToLngLat(x: number, y: number, _z?: number): [number, number] {
     // Validate inputs
     if (!isValidNumber(x) || !isValidNumber(y)) {
       console.warn(`MercatorProjection.sceneToLngLat: invalid coordinates (${x}, ${y}), returning origin`);

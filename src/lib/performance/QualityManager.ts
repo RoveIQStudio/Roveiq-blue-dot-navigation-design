@@ -9,7 +9,6 @@ import {
   type QualityPreset,
   type QualitySettings,
   QUALITY_PRESETS,
-  getDefaultQualitySettings,
 } from './QualityPresets';
 
 export interface QualityManagerOptions {

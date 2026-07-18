@@ -25,6 +25,9 @@ jobs:
       - name: Run type checks
         run: npm run check
 
+      - name: Lint
+        run: npm run lint
+
       - name: Run tests with coverage
         run: npm run test -- --coverage --run
 
@@ -76,4 +79,3 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
-

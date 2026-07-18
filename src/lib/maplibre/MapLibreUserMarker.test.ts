@@ -356,7 +356,7 @@ describe('MapLibreUserMarker', () => {
         });
 
         it('warns/throws if maplibregl is missing entirely', () => {
-            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => { });
+            vi.spyOn(console, 'warn').mockImplementation(() => { });
             const noLibMarker = new MapLibreUserMarker({
                 enableAutoConfidence: false
             });

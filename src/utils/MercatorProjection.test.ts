@@ -71,14 +71,14 @@ describe('MercatorProjection', () => {
         it('handles altitude correctly (Z-axis)', () => {
             const proj = new MercatorProjection(CENTER, 1);
             const altitude = 100;
-            const [x, y, z] = proj.lngLatToScene(CENTER[0], CENTER[1], altitude);
+            const [_x, _y, z] = proj.lngLatToScene(CENTER[0], CENTER[1], altitude);
             expect(z).toBe(100);
         });
 
         it('returns altitude unscaled (GPS altitude is inaccurate)', () => {
             const proj = new MercatorProjection(CENTER, 10);
             const altitude = 50;
-            const [x, y, z] = proj.lngLatToScene(CENTER[0], CENTER[1], altitude);
+            const [_x, _y, z] = proj.lngLatToScene(CENTER[0], CENTER[1], altitude);
             // Altitude is no longer scaled - returned as-is
             expect(z).toBe(50);
         });
@@ -94,15 +94,15 @@ describe('MercatorProjection', () => {
 
         it('handles invalid altitude gracefully', () => {
             const proj = new MercatorProjection(CENTER, 1);
-            const [x, y, z] = proj.lngLatToScene(CENTER[0], CENTER[1], NaN);
+            const [_x, _y, z] = proj.lngLatToScene(CENTER[0], CENTER[1], NaN);
             expect(z).toBe(0);
         });
 
         it('clamps extreme latitudes', () => {
             const proj = new MercatorProjection([0, 0], 1);
             // Should not throw for extreme latitudes
-            const [x1, y1] = proj.lngLatToScene(0, 90);
-            const [x2, y2] = proj.lngLatToScene(0, -90);
+            const [_x1, y1] = proj.lngLatToScene(0, 90);
+            const [_x2, y2] = proj.lngLatToScene(0, -90);
             expect(Number.isFinite(y1)).toBe(true);
             expect(Number.isFinite(y2)).toBe(true);
         });

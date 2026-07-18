@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, copyFileSync, statSync } from 'fs';
-import { join, dirname, basename } from 'path';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync, statSync } from 'fs';
+import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { createInterface } from 'readline';
 

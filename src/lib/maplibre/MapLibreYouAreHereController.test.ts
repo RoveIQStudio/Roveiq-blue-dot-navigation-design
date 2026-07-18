@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MapLibreYouAreHereController } from './MapLibreYouAreHereController';
 import { GeolocationProvider } from '../GeolocationProvider';
-import type { LocationData } from '../types';
 
 // Mock maplibregl Marker class
 class MockMarker {

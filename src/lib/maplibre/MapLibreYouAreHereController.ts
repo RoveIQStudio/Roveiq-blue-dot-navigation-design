@@ -1,7 +1,6 @@
 import type { Map } from 'maplibre-gl';
 import { MapLibreUserMarker } from './MapLibreUserMarker';
 import { GeolocationProvider } from '../GeolocationProvider';
-import { isValidNumber } from '../../utils/validation';
 import type {
   UserMarkerOptions,
   GeolocationOptions,
