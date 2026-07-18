@@ -748,4 +748,63 @@ describe('GeolocationProvider', () => {
             expect(() => provider.dispose()).not.toThrow();
         });
     });
+
+    describe('stop() while paused (visibility)', () => {
+        it('does not auto-resume tracking after stop() when tab becomes visible again', async () => {
+            // Begin watching: shared mock delivers the first fix via a 0ms timer.
+            const startPromise = provider.start();
+            await vi.runAllTimersAsync();
+            await startPromise;
+
+            // Simulate tab hidden -> pause (matches the file's visibility test style).
+            (provider as any).pause();
+            expect(provider.isPausedForVisibility()).toBe(true);
+
+            // Explicit stop while hidden.
+            provider.stop();
+            const watchCallsAfterStop = mockWatchPosition.mock.calls.length;
+
+            // Tab visible again -> must NOT restart the watch.
+            (provider as any).resume();
+
+            expect(mockWatchPosition.mock.calls.length).toBe(watchCallsAfterStop);
+            expect(provider.isWatching()).toBe(false);
+        });
+    });
+
+    describe('start() timeout hygiene', () => {
+        it('clears the orphaned watch on timeout and allows retry', async () => {
+            const clearWatch = vi.fn();
+            // watchPosition that never delivers a fix (no success/error callback).
+            const watchPosition = vi.fn().mockReturnValue(42);
+            vi.stubGlobal('navigator', { geolocation: { watchPosition, clearWatch } });
+
+            const timeoutProvider = new GeolocationProvider({ timeout: 10000 });
+            const startAttempt = timeoutProvider.start();
+            const rejection = expect(startAttempt).rejects.toMatchObject({
+                code: RoveErrorCode.TIMEOUT,
+            });
+
+            // Deadline must be derived from options.timeout (+1000 grace), not a shorter
+            // hardcoded 5s value: after the full options.timeout has elapsed, start()
+            // must still be pending and the watch still live.
+            await vi.advanceTimersByTimeAsync(10000);
+            expect(clearWatch).not.toHaveBeenCalled();
+            expect(timeoutProvider.isWatching()).toBe(true);
+
+            // Cross the options.timeout + 1000 deadline -> now it times out.
+            await vi.advanceTimersByTimeAsync(1000);
+            await rejection;
+
+            expect(clearWatch).toHaveBeenCalledWith(42);
+            expect(timeoutProvider.isWatching()).toBe(false);
+
+            // Retry must reach watchPosition again (old bug: watchId stayed set, start() no-oped).
+            void timeoutProvider.start().catch(() => { });
+            await vi.advanceTimersByTimeAsync(0);
+            expect(watchPosition).toHaveBeenCalledTimes(2);
+
+            timeoutProvider.dispose();
+        });
+    });
 });

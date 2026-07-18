@@ -16,9 +16,6 @@ const MAX_LISTENERS_WARNING = 10;
 /** Default minimum interval between location updates in ms (throttling) */
 const DEFAULT_MIN_UPDATE_INTERVAL_MS = 100;
 
-/** Maximum time to wait for concurrent start() operations (ms) */
-const START_TIMEOUT_MS = 5000;
-
 const DEFAULT_OPTIONS: Required<GeolocationOptions> = {
   enableHighAccuracy: true,
   maximumAge: 0,
@@ -395,17 +392,27 @@ export class GeolocationProvider implements LocationSource {
     return new Promise<void>((resolve, reject) => {
       let resolved = false;
 
-      // Add timeout for the entire operation
+      const clearOrphanedWatch = () => {
+        if (this.watchId !== null && typeof navigator !== 'undefined' && navigator.geolocation) {
+          navigator.geolocation.clearWatch(this.watchId);
+          this.watchId = null;
+        }
+      };
+
+      // Give the browser its full configured timeout, plus a grace period,
+      // before declaring the start dead.
       const timeoutId = setTimeout(() => {
         if (!resolved) {
           resolved = true;
+          clearOrphanedWatch();
           const error = new RoveError(
             RoveErrorCode.TIMEOUT,
             'Geolocation start timed out'
           );
+          this.emit('error', error);
           reject(error);
         }
-      }, START_TIMEOUT_MS);
+      }, this.options.timeout + 1000);
 
       this.watchId = navigator.geolocation.watchPosition(
         (position) => {
@@ -421,12 +428,13 @@ export class GeolocationProvider implements LocationSource {
         (error) => {
           this.handlePositionError(error);
 
-          // Reject if this is the first call (permission denied or other error)
+          // Reject if this is the first callback (permission denied or other error).
+          // The watch is dead for our purposes — clear it so isWatching() is
+          // truthful and a later start() can retry.
           if (!resolved) {
             resolved = true;
             clearTimeout(timeoutId);
-            // handlePositionError already emits the error, we just need to reject the promise
-            // We should reconstruct the RoveError to return it
+            clearOrphanedWatch();
             let code = RoveErrorCode.INTERNAL_ERROR;
             if (error.code === error.PERMISSION_DENIED) code = RoveErrorCode.PERMISSION_DENIED;
             else if (error.code === error.TIMEOUT) code = RoveErrorCode.TIMEOUT;
@@ -574,6 +582,8 @@ export class GeolocationProvider implements LocationSource {
       }
       this.watchId = null;
     }
+    // A stopped provider must not auto-resume on the next visibility change.
+    this.isPaused = false;
   }
 
   /**
