@@ -69,6 +69,11 @@ class MockLocationSource implements LocationSource {
         this.disposeCalled = true;
     }
 
+    // Test helper: number of active listeners for an event
+    listenerCount<K extends keyof GeolocationEvents>(event: K): number {
+        return this.listeners[event].size;
+    }
+
     // Test helpers to emit events
     emitUpdate(location: LocationData): void {
         this.lastLocation = location;
@@ -109,6 +114,7 @@ describe('ThreeYouAreHereController', () => {
             controller.dispose();
         }
         vi.restoreAllMocks();
+        vi.unstubAllGlobals();
         vi.useRealTimers();
     });
 
@@ -888,10 +894,24 @@ describe('controller resource ownership', () => {
         const disposeSpy = vi.spyOn(source, 'dispose');
 
         const controller = new ThreeYouAreHereController({ center: [0, 0], locationSource: source });
+
+        // Constructor wires one listener per event
+        const events = ['update', 'error', 'permissionChange', 'deviceOrientation', 'resume'] as const;
+        for (const event of events) {
+            expect(source.listenerCount(event)).toBe(1);
+        }
+
         controller.dispose();
 
         expect(disposeSpy).not.toHaveBeenCalled();
-        // Listeners are detached: an update after dispose must not move the marker
+        // Every listener the controller registered must be detached on dispose.
+        // (This fails if the unsubscribe loop is removed - the isDisposed guard
+        // inside each handler alone does NOT detach the underlying subscription.)
+        for (const event of events) {
+            expect(source.listenerCount(event)).toBe(0);
+        }
+
+        // And an update after dispose must not move the marker
         const positionBefore = controller.marker.position.clone();
         source.emitUpdate({
             longitude: 0.001, latitude: 0.001, altitude: null, accuracy: 5,
