@@ -162,6 +162,12 @@ export class MapLibreYouAreHereController {
       // Pass raw heading - marker handles smoothing
       this.marker.setDeviceHeading(heading);
     });
+
+    // Reset staleness on visibility resume so the marker doesn't flash "lost"
+    this.geolocation.on('resume', () => {
+      if (this.isDisposed) return;
+      this.marker.resetStalenessTimer();
+    });
   }
 
   /**

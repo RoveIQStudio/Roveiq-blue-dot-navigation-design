@@ -454,6 +454,18 @@ describe('MapLibreYouAreHereController', () => {
         });
     });
 
+    describe('visibility resume', () => {
+        it('resets marker staleness when the geolocation provider resumes', () => {
+            controller = createController();
+            const resetSpy = vi.spyOn(controller.marker, 'resetStalenessTimer');
+
+            // Reach into the provider and fire its resume event
+            (controller.geolocation as any).emit('resume', undefined);
+
+            expect(resetSpy).toHaveBeenCalled();
+        });
+    });
+
     describe('flyToUser()', () => {
         beforeEach(async () => {
             controller = createController();

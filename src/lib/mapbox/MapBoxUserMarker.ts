@@ -357,6 +357,15 @@ export class MapBoxUserMarker {
   }
 
   /**
+   * Reset the staleness timer, e.g. after a tab-visibility resume, so the
+   * marker doesn't flash the "lost" state while waiting for a fresh fix.
+   */
+  resetStalenessTimer(): void {
+    this.lastPositionUpdateTime = Date.now();
+    this.isDirty = true;
+  }
+
+  /**
    * Set dot color
    */
   setDotColor(color: number): this {

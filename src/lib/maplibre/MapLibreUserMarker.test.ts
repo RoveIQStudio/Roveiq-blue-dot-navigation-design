@@ -391,4 +391,26 @@ describe('MapLibreUserMarker', () => {
             expect(pos![1]).toBeCloseTo(40.7128);
         });
     });
+
+    describe('resetStalenessTimer', () => {
+        it('clears staleness-driven low/lost confidence after a visibility resume', () => {
+            vi.useFakeTimers();
+            const marker = new MapLibreUserMarker();
+            marker.setLngLat([0, 0]);
+            marker.setAccuracy(5);
+
+            // Age the fix past the lost threshold
+            vi.advanceTimersByTime(120_000);
+            (marker as any).updateAutoConfidence();
+            expect((marker as any).confidenceState).toBe('lost');
+
+            // Tab came back: staleness must reset so we don't flash "lost"
+            marker.resetStalenessTimer();
+            (marker as any).updateAutoConfidence();
+            expect((marker as any).confidenceState).toBe('high');
+
+            marker.dispose();
+            vi.useRealTimers();
+        });
+    });
 });
