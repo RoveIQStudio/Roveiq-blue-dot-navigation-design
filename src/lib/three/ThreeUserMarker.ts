@@ -221,6 +221,15 @@ export class ThreeUserMarker extends THREE.Group {
     this.visible = false; // Hidden until first position update
   }
 
+  /**
+   * The effective coordinate-system orientation after defaults are applied.
+   * Anything positioning this marker must consult this — never the raw
+   * options it was constructed with.
+   */
+  getOrientation(): 'y-up' | 'z-up' {
+    return this.options.orientation;
+  }
+
   private createMaterials(): void {
     // Instead of creating new materials for every marker, use the static cache
     // This allows batching and reduces GPU memory when many markers are used

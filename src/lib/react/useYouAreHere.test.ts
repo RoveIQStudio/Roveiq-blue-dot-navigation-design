@@ -20,6 +20,7 @@ vi.mock('../three/ThreeUserMarker', () => {
             return this;
         });
         getConfidence = vi.fn().mockImplementation(() => this._confidence);
+        getOrientation = vi.fn().mockReturnValue('y-up');
         update = vi.fn();
         dispose = vi.fn();
 

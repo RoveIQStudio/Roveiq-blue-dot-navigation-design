@@ -190,7 +190,7 @@ export function useYouAreHere(options: UseYouAreHereOptions): UseYouAreHereResul
         setScenePosition([x, y, z]);
 
         // Update marker position
-        if (markerOptions?.orientation === 'y-up') {
+        if (marker.getOrientation() === 'y-up') {
           marker.setPosition(x, z, -y);
         } else {
           marker.setPosition(x, y, z);

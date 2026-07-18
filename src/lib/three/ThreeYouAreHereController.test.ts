@@ -833,3 +833,32 @@ describe('ThreeYouAreHereController', () => {
         });
     });
 });
+
+describe('default orientation consistency (y-up regression)', () => {
+    it('positions the marker with y-up axis mapping when orientation is defaulted', () => {
+        const source = new MockLocationSource();
+        const controller = new ThreeYouAreHereController({
+            center: [0, 0],
+            locationSource: source,
+        });
+
+        // Marker default is y-up: mesh is rotated onto the XZ plane
+        expect(controller.marker.rotation.x).toBeCloseTo(-Math.PI / 2);
+
+        // A fix north of center must move the marker along -Z (north), NOT +Y (up)
+        source.emitUpdate({
+            longitude: 0,
+            latitude: 0.001,
+            altitude: null,
+            accuracy: 5,
+            speed: null,
+            heading: null,
+            timestamp: Date.now(),
+        });
+
+        expect(controller.marker.position.y).toBeCloseTo(0, 3);
+        expect(controller.marker.position.z).toBeLessThan(0);
+
+        controller.dispose();
+    });
+});

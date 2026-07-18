@@ -90,7 +90,7 @@ export class ThreeYouAreHereController {
       ) ?? [0, 0, 0];
 
       // Handle coordinate system based on marker orientation
-      if (options.markerOptions?.orientation === 'y-up') {
+      if (this.marker.getOrientation() === 'y-up') {
         // Standard Three.js: Y is up, -Z is North
         // Map data: x=East, y=North, z=Altitude
         // We map: x->x, y->-z, z->y
