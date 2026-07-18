@@ -188,6 +188,7 @@ export class ThreeUserMarker extends THREE.Group {
   private lostCircleGeometry!: THREE.CircleGeometry;
   private savedPulseSpeed = 0; // Store original pulse speed when entering warning/danger
   private savedConeColor = 0; // Store original cone color when entering warning/danger
+  private hasSavedAlertState = false; // True while savedPulseSpeed/savedConeColor hold real values
 
   // Pre-created materials for each confidence state (avoids GPU recompiles)
   private dotMaterials!: Record<ConfidenceState, THREE.MeshBasicMaterial>;
@@ -1023,9 +1024,11 @@ export class ThreeUserMarker extends THREE.Group {
       // Save current settings
       this.savedPulseSpeed = this.options.pulseSpeed;
       this.savedConeColor = this.options.coneColor;
+      this.hasSavedAlertState = true;
     }
 
-    if (isLeavingAlert && this.savedPulseSpeed > 0) {
+    if (isLeavingAlert && this.hasSavedAlertState) {
+      this.hasSavedAlertState = false;
       // Restore original settings
       this.options.pulseSpeed = this.savedPulseSpeed;
       this.options.coneColor = this.savedConeColor;

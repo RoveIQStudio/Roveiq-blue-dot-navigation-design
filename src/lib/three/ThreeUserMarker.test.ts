@@ -552,3 +552,32 @@ describe('material cache integrity', () => {
     expect(disposed).toContain('border'); // per-instance material leaked before
   });
 });
+
+describe('alert state restore with pulsing disabled', () => {
+  it('restores pulseSpeed 0 and original cone color after leaving warning state', () => {
+    const marker = new ThreeUserMarker({ pulseSpeed: 0, coneColor: 0x4285f4 });
+
+    marker.setConfidence('warning');
+    expect((marker as any).options.pulseSpeed).toBe(0.35);
+
+    marker.setConfidence('high');
+    expect((marker as any).options.pulseSpeed).toBe(0); // stuck at 0.35 before the fix
+    expect((marker as any).options.coneColor).toBe(0x4285f4);
+
+    marker.dispose();
+  });
+
+  it('does not clobber saved state across a warning -> danger -> high sequence', () => {
+    const marker = new ThreeUserMarker({ pulseSpeed: 0, coneColor: 0x4285f4 });
+
+    marker.setConfidence('warning');
+    marker.setConfidence('danger'); // second alert entry must not overwrite saved state
+    expect((marker as any).options.pulseSpeed).toBe(0.55);
+
+    marker.setConfidence('high');
+    expect((marker as any).options.pulseSpeed).toBe(0);
+    expect((marker as any).options.coneColor).toBe(0x4285f4);
+
+    marker.dispose();
+  });
+});
