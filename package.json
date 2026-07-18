@@ -121,6 +121,6 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "git+https://github.com/russellmiddleton33/RoveBeacon.git"
   }
 }
