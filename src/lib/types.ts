@@ -33,8 +33,9 @@ export interface SDKConfig {
   /**
    * Error telemetry callback
    *
-   * Called whenever RoveError.emit() is used, allowing integration
-   * with external error tracking services like Sentry or Datadog.
+   * Called when RoveError.emit() is used with a context, allowing integration
+   * with external error tracking services like Sentry or Datadog. If emit() is
+   * called without a context, this hook is not invoked.
    *
    * @example
    * ```typescript

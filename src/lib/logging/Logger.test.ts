@@ -244,6 +244,20 @@ describe('Logger', () => {
         configureSDK({ productionMode: false });
       }
     });
+
+    it('makes the pre-constructed singleton respect late production-mode config', () => {
+      // `logger` was constructed at module load (before this configureSDK call).
+      // Lazy evaluation of productionMode is what lets it fall silent here.
+      configureSDK({ productionMode: true });
+      try {
+        const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        logger.warn('Test', 'should not print after late config');
+        expect(spy).not.toHaveBeenCalled();
+        spy.mockRestore();
+      } finally {
+        configureSDK({ productionMode: false });
+      }
+    });
   });
 });
 

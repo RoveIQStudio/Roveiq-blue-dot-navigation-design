@@ -83,15 +83,29 @@ export class Logger {
   private level: LogLevel;
   private prefix: string;
   private onLog?: (entry: LogEntry) => void;
-  private silent: boolean;
+  /**
+   * Explicit silent override. When undefined, the effective silent state is
+   * derived lazily from the SDK's `productionMode` at output time (see
+   * `isSilent`). Storing only the explicit value — rather than resolving it in
+   * the constructor — is what lets the pre-built `logger` singleton respect a
+   * `configureSDK({ productionMode })` call that happens after module load.
+   */
+  private explicitSilent?: boolean;
 
   constructor(options: LoggerOptions = {}) {
     this.level = options.level ?? 'warn';
     this.prefix = options.prefix ?? 'RoveBeacon';
     this.onLog = options.onLog;
-    // Default to the SDK's production mode so library logs stay silent in
-    // production; an explicit `silent` option always wins.
-    this.silent = options.silent ?? getSDKConfig().productionMode ?? false;
+    this.explicitSilent = options.silent;
+  }
+
+  /**
+   * Resolve the effective silent state. An explicit `silent` option/override
+   * always wins; otherwise fall back to the SDK's `productionMode`, evaluated
+   * at output time so late configuration is honored.
+   */
+  private isSilent(): boolean {
+    return this.explicitSilent ?? getSDKConfig().productionMode ?? false;
   }
 
   /**
@@ -124,7 +138,7 @@ export class Logger {
     this.onLog?.(entry);
 
     // Console output (unless silent)
-    if (!this.silent) {
+    if (!this.isSilent()) {
       const formatted = `[${this.prefix}:${component}] ${message}`;
       switch (level) {
         case 'error':
@@ -193,10 +207,12 @@ export class Logger {
   }
 
   /**
-   * Enable/disable console output
+   * Enable/disable console output.
+   * Sets an explicit override that takes precedence over the SDK's
+   * `productionMode`.
    */
   setSilent(silent: boolean): void {
-    this.silent = silent;
+    this.explicitSilent = silent;
   }
 
   /**
