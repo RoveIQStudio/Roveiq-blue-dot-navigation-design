@@ -89,6 +89,7 @@ const DEFAULT_OPTIONS: Required<UserMarkerOptions> = {
   ringInnerRadius: 12,
   ringOuterRadius: 25,
   mapLibreModule: null,
+  mapBoxModule: null,
 };
 
 /**

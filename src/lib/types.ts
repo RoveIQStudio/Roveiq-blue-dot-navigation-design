@@ -313,6 +313,13 @@ export interface UserMarkerOptions {
    * which is safer and recommended for modular environments.
    */
   mapLibreModule?: any;
+
+  /**
+   * The mapbox-gl module for creating the native marker. Pass your imported
+   * module when using a bundler (Vite/webpack) where no global is available.
+   * @default null (falls back to window.mapboxgl)
+   */
+  mapBoxModule?: any;
 }
 
 /**

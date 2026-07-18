@@ -1,7 +1,13 @@
 import type { Map, Marker, LngLatLike } from 'mapbox-gl';
+import { getGlobalQualityManager } from '../performance/QualityManager';
 import type { UserMarkerOptions, ConfidenceState } from '../types';
 import { sdkWarn } from '../types';
 import { isValidNumber, normalizeAngleDegrees } from '../../utils/validation';
+
+/**
+ * Default pulse speed in cycles per second
+ */
+const DEFAULT_PULSE_SPEED = 0.3;
 
 /**
  * Maximum iterations for angle normalization loops
@@ -45,6 +51,7 @@ const DEFAULT_OPTIONS: Required<Omit<UserMarkerOptions, 'orientation'>> = {
   ringInnerRadius: 15,
   ringOuterRadius: 35,
   mapLibreModule: null,
+  mapBoxModule: null,
 };
 
 /**
@@ -112,7 +119,23 @@ export class MapBoxUserMarker {
   private boundHandleDprChange: (() => void) | null = null;
 
   constructor(options: UserMarkerOptions = {}) {
-    this.options = { ...DEFAULT_OPTIONS, ...options };
+    // Get quality settings and apply defaults if not overridden
+    const qualityManager = getGlobalQualityManager();
+    const qualitySettings = qualityManager.getSettings();
+
+    // Merge defaults -> quality settings -> user options
+    const mergedOptions: UserMarkerOptions = {
+      ...DEFAULT_OPTIONS,
+      // Apply quality-dependent defaults
+      pulseSpeed: options.pulseSpeed ?? (qualitySettings.pulseEnabled ? DEFAULT_PULSE_SPEED : 0),
+      smoothPosition: options.smoothPosition ?? qualitySettings.smoothPosition,
+      smoothHeading: options.smoothHeading ?? qualitySettings.smoothHeading,
+      positionSmoothingFactor: options.positionSmoothingFactor ?? qualitySettings.positionSmoothingFactor,
+      headingSmoothingFactor: options.headingSmoothingFactor ?? qualitySettings.headingSmoothingFactor,
+      ...options
+    };
+
+    this.options = mergedOptions as Required<Omit<UserMarkerOptions, 'orientation'>>;
     this.currentDpr = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
 
     // Create container element
@@ -209,10 +232,16 @@ export class MapBoxUserMarker {
 
     this.map = map;
 
-    // Dynamically import mapbox-gl to create marker
-    const mapboxgl = (map as any)._mapboxgl || (window as any).mapboxgl;
+    // Resolve mapbox-gl to create the native marker.
+    // Prioritize the injected module, then globals — matching MapLibreUserMarker.
+    let mapboxgl = this.options.mapBoxModule;
+
     if (!mapboxgl) {
-      throw new Error('MapBoxUserMarker: mapbox-gl not found. Make sure mapbox-gl is loaded before creating the marker.');
+      mapboxgl = (map as any)._mapboxgl || (window as any).mapboxgl;
+    }
+
+    if (!mapboxgl) {
+      throw new Error('MapBoxUserMarker: mapbox-gl not found. Provide it via options.mapBoxModule or ensure it is loaded globally.');
     }
 
     this.marker = new mapboxgl.Marker({

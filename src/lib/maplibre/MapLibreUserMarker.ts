@@ -62,6 +62,7 @@ const DEFAULT_OPTIONS: Required<Omit<UserMarkerOptions, 'orientation'>> = {
   ringInnerRadius: 15,
   ringOuterRadius: 35,
   mapLibreModule: null,
+  mapBoxModule: null,
 };
 
 /**
