@@ -127,4 +127,34 @@ describe('MapBoxUserMarker', () => {
             marker.dispose();
         });
     });
+
+    describe('zoom invalidation', () => {
+        it('marks the canvas dirty when the map zooms', () => {
+            const listeners: Record<string, () => void> = {};
+            const fakeMap = {
+                on: vi.fn((event: string, cb: () => void) => { listeners[event] = cb; }),
+                off: vi.fn(),
+                getZoom: vi.fn().mockReturnValue(15),
+            };
+            // Mirror of the MapLibre zoom-invalidation test. Inject the module via
+            // the constructor and use mockImplementation so the fake Marker is
+            // `new`-constructable.
+            const fakeModule = {
+                Marker: vi.fn().mockImplementation(function () {
+                    return { setLngLat: vi.fn(), addTo: vi.fn(), remove: vi.fn() };
+                }),
+            };
+            const marker = new MapBoxUserMarker({ pulseSpeed: 0, mapBoxModule: fakeModule });
+
+            marker.addTo(fakeMap as any);
+            (marker as any).isDirty = false;
+
+            expect(listeners['zoom']).toBeDefined();
+            listeners['zoom']();
+            expect((marker as any).isDirty).toBe(true);
+
+            marker.dispose();
+            expect(fakeMap.off).toHaveBeenCalledWith('zoom', expect.any(Function));
+        });
+    });
 });

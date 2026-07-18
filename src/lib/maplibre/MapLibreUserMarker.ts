@@ -121,6 +121,7 @@ export class MapLibreUserMarker {
   private currentDpr = 1;
   private dprMediaQuery: MediaQueryList | null = null;
   private boundHandleDprChange: (() => void) | null = null;
+  private boundHandleMapZoom: (() => void) | null = null;
 
   // Cache for color strings to avoid repeated number.toString(16) in render loop
   private colorCache: Map<number, string> = new Map();
@@ -250,6 +251,16 @@ export class MapLibreUserMarker {
   }
 
   /**
+   * Clean up the map zoom listener
+   */
+  private cleanupMapZoomListener(): void {
+    if (this.map && this.boundHandleMapZoom) {
+      this.map.off('zoom', this.boundHandleMapZoom);
+    }
+    this.boundHandleMapZoom = null;
+  }
+
+  /**
    * Handle device pixel ratio change
    */
   private handleDprChange(newDpr: number): void {
@@ -280,6 +291,11 @@ export class MapLibreUserMarker {
     }
 
     this.map = map;
+
+    // Ring radius depends on zoom (meters-per-pixel); redraw on zoom even when
+    // pulsing is disabled and no GPS tick arrives.
+    this.boundHandleMapZoom = () => { this.isDirty = true; };
+    map.on('zoom', this.boundHandleMapZoom);
 
     // Dynamically import maplibre-gl to create marker
     // Prioritize passed module, then window/global, then strict dependency
@@ -318,6 +334,7 @@ export class MapLibreUserMarker {
       this.marker.remove();
       this.marker = null;
     }
+    this.cleanupMapZoomListener();
     this.map = null;
     return this;
   }
@@ -865,6 +882,7 @@ export class MapLibreUserMarker {
 
     // Clean up DPR change listener
     this.cleanupDprListener();
+    this.cleanupMapZoomListener();
 
     if (this.container.parentNode) {
       this.container.parentNode.removeChild(this.container);

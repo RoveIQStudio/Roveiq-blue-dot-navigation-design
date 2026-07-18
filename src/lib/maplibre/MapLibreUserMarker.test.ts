@@ -413,4 +413,35 @@ describe('MapLibreUserMarker', () => {
             vi.useRealTimers();
         });
     });
+
+    describe('zoom invalidation', () => {
+        it('marks the canvas dirty when the map zooms', () => {
+            const listeners: Record<string, () => void> = {};
+            const fakeMap = {
+                on: vi.fn((event: string, cb: () => void) => { listeners[event] = cb; }),
+                off: vi.fn(),
+                getZoom: vi.fn().mockReturnValue(15),
+            };
+            // Provide the module so addTo doesn't throw. Adapted from the brief:
+            // inject via the constructor (supported since Task 12) instead of
+            // mutating options post-construction, and use mockImplementation so the
+            // fake Marker is `new`-constructable.
+            const fakeModule = {
+                Marker: vi.fn().mockImplementation(function () {
+                    return { setLngLat: vi.fn(), addTo: vi.fn(), remove: vi.fn() };
+                }),
+            };
+            const marker = new MapLibreUserMarker({ pulseSpeed: 0, mapLibreModule: fakeModule });
+
+            marker.addTo(fakeMap as any);
+            (marker as any).isDirty = false;
+
+            expect(listeners['zoom']).toBeDefined();
+            listeners['zoom']();
+            expect((marker as any).isDirty).toBe(true);
+
+            marker.dispose();
+            expect(fakeMap.off).toHaveBeenCalledWith('zoom', expect.any(Function));
+        });
+    });
 });

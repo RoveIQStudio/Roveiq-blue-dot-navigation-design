@@ -117,6 +117,7 @@ export class MapBoxUserMarker {
   private currentDpr = 1;
   private dprMediaQuery: MediaQueryList | null = null;
   private boundHandleDprChange: (() => void) | null = null;
+  private boundHandleMapZoom: (() => void) | null = null;
 
   constructor(options: UserMarkerOptions = {}) {
     // Get quality settings and apply defaults if not overridden
@@ -205,6 +206,16 @@ export class MapBoxUserMarker {
   }
 
   /**
+   * Clean up the map zoom listener
+   */
+  private cleanupMapZoomListener(): void {
+    if (this.map && this.boundHandleMapZoom) {
+      this.map.off('zoom', this.boundHandleMapZoom);
+    }
+    this.boundHandleMapZoom = null;
+  }
+
+  /**
    * Handle device pixel ratio change
    */
   private handleDprChange(newDpr: number): void {
@@ -231,6 +242,11 @@ export class MapBoxUserMarker {
     }
 
     this.map = map;
+
+    // Ring radius depends on zoom (meters-per-pixel); redraw on zoom even when
+    // pulsing is disabled and no GPS tick arrives.
+    this.boundHandleMapZoom = () => { this.isDirty = true; };
+    map.on('zoom', this.boundHandleMapZoom);
 
     // Resolve mapbox-gl to create the native marker.
     // Prioritize the injected module, then globals — matching MapLibreUserMarker.
@@ -264,6 +280,7 @@ export class MapBoxUserMarker {
       this.marker.remove();
       this.marker = null;
     }
+    this.cleanupMapZoomListener();
     this.map = null;
     return this;
   }
@@ -792,6 +809,7 @@ export class MapBoxUserMarker {
     this.stopAnimation();
     this.remove();
     this.cleanupDprListener();
+    this.cleanupMapZoomListener();
 
     if (this.container.parentNode) {
       this.container.parentNode.removeChild(this.container);
