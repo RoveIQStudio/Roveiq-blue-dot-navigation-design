@@ -184,28 +184,32 @@
     </div>
   </div>
 
-  <!-- Three.js from CDN -->
-  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-
   <!--
-    RoveMaps You Are Here SDK from CDN
+    RoveMaps You Are Here SDK from CDN (ESM-only as of v3).
 
-    Choose one of these options:
+    The package ships as ES modules. Three.js resolves through the import map
+    below so the SDK and this page share a single Three.js instance.
 
-    Option 1: unpkg (auto-updates to latest minor version)
-    <script src="https://unpkg.com/rovemaps-you-are-here@^2.0.0/dist/rovemaps-you-are-here.umd.cjs"></script>
-
-    Option 2: jsDelivr (faster, with caching)
-    <script src="https://cdn.jsdelivr.net/npm/rovemaps-you-are-here@2.0.0/dist/rovemaps-you-are-here.umd.cjs"></script>
-
-    Option 3: Specific version (recommended for production)
-    <script src="https://unpkg.com/rovemaps-you-are-here@2.0.0/dist/rovemaps-you-are-here.umd.cjs"></script>
+    jsDelivr (used below): https://cdn.jsdelivr.net/npm/rovemaps-you-are-here@3/dist/index.js
+    unpkg:                 https://unpkg.com/rovemaps-you-are-here@3/dist/index.js
   -->
-  <script src="https://unpkg.com/rovemaps-you-are-here@2.0.0/dist/rovemaps-you-are-here.umd.cjs"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.181.0/build/three.module.js"
+      }
+    }
+  </script>
 
-  <script>
-    // Get SDK classes from global
-    const { ThreeYouAreHereController, ThreeUserMarker, GeolocationProvider, MercatorProjection } = RoveMapsYouAreHere;
+  <script type="module">
+    // Import SDK classes from the published ESM build; `three` resolves via the import map.
+    import * as THREE from 'three';
+    import {
+      ThreeYouAreHereController,
+      ThreeUserMarker,
+      GeolocationProvider,
+      MercatorProjection,
+    } from 'https://cdn.jsdelivr.net/npm/rovemaps-you-are-here@3/dist/index.js';
 
     // DOM elements
     const canvas = document.getElementById('canvas');
@@ -382,7 +386,7 @@
       }
     });
 
-    console.log('RoveMaps You Are Here SDK loaded:', RoveMapsYouAreHere);
+    console.log('RoveMaps You Are Here SDK loaded');
     console.log('Three.js version:', THREE.REVISION);
   </script>
 </body>

@@ -184,23 +184,34 @@
     </div>
   </div>
 
-  <!-- Three.js from CDN -->
-  <script src="https://unpkg.com/three@0.160.0/build/three.min.js"></script>
-
   <!--
-    RoveMaps You Are Here SDK
-    For production, use one of these CDN URLs after publishing to npm:
+    RoveMaps You Are Here SDK (ESM-only as of v3).
 
-    unpkg:    https://unpkg.com/rovemaps-you-are-here@2.0.0/dist/rovemaps-you-are-here.umd.cjs
-    jsDelivr: https://cdn.jsdelivr.net/npm/rovemaps-you-are-here@2.0.0/dist/rovemaps-you-are-here.umd.cjs
+    Three.js resolves through the import map below so the SDK and this page
+    share a single Three.js instance. For production, load the SDK from a CDN:
 
-    For local testing, we'll use a relative path:
+    unpkg:    https://unpkg.com/rovemaps-you-are-here@3/dist/index.js
+    jsDelivr: https://cdn.jsdelivr.net/npm/rovemaps-you-are-here@3/dist/index.js
+
+    For local testing, we import the built ESM bundle via a relative path.
   -->
-  <script src="../dist/rovemaps-you-are-here.umd.cjs"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.181.0/build/three.module.js"
+      }
+    }
+  </script>
 
-  <script>
-    // Get SDK classes from global
-    const { ThreeYouAreHereController, ThreeUserMarker, GeolocationProvider, MercatorProjection } = RoveMapsYouAreHere;
+  <script type="module">
+    // Import SDK classes from the local ESM build; `three` resolves via the import map.
+    import * as THREE from 'three';
+    import {
+      ThreeYouAreHereController,
+      ThreeUserMarker,
+      GeolocationProvider,
+      MercatorProjection,
+    } from '../dist/index.js';
 
     // DOM elements
     const canvas = document.getElementById('canvas');
@@ -377,7 +388,7 @@
       }
     });
 
-    console.log('RoveMaps You Are Here SDK loaded:', RoveMapsYouAreHere);
+    console.log('RoveMaps You Are Here SDK loaded');
     console.log('Three.js version:', THREE.REVISION);
   </script>
 </body>

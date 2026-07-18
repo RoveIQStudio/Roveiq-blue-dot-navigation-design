@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { useYouAreHere } from 'rovemaps-you-are-here';
+import { useYouAreHere } from 'rovemaps-you-are-here/react';
 
 interface YouAreHereMarkerProps {
   center: [number, number];

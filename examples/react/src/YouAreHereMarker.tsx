@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { useYouAreHere } from 'rovemaps-you-are-here';
+import { useYouAreHere } from 'rovemaps-you-are-here/react';
 import type { LocationData } from 'rovemaps-you-are-here';
 
 interface YouAreHereMarkerProps {
@@ -94,11 +94,13 @@ export default function YouAreHereMarker({
   // Update marker animation every frame
   useFrame((_, delta) => {
     // Update target position if we have location
-    if (location) {
+    if (location && marker) {
       targetRef.current.copy(marker.position);
     }
     update(delta, camera, targetRef.current);
   });
 
+  // `marker` is null until the hook's mount effect runs (StrictMode-safe).
+  if (!marker) return null;
   return <primitive object={marker} />;
 }

@@ -17,6 +17,7 @@ A correctness-and-packaging release. The runtime API of the controllers and mark
 - `svelte` is now an optional `peerDependency` (`>=4.0.0`); install it only if you use the Svelte store.
 - Removed unwired exports: `FrameMonitor`, `AnimationManager` (and their option/stat types).
 - Removed never-emitted error codes: `PERMISSION_DISMISSED`, `PERMISSION_UNAVAILABLE`, `SENSORS_UNAVAILABLE`, `NETWORK_ERROR`, `INVALID_CONFIGURATION`, `NOT_INITIALIZED`, `ALREADY_STARTED`.
+- `RoveError.emit()` parameter order changed from `(code, message, context, originalError?)` to `(code, message, originalError?, context?)` to match the constructor; the `onError` telemetry hook now fires only when a context is provided.
 
 ### Fixed
 - Default (`y-up`) Three.js path positioned the marker on the wrong axis.
