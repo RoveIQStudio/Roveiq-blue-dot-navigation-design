@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { renderHook, act } from '@testing-library/react';
+import { StrictMode } from 'react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import { useYouAreHere } from './useYouAreHere';
+import { ThreeUserMarker } from '../three/ThreeUserMarker';
+import { GeolocationProvider } from '../GeolocationProvider';
 import type { LocationSource } from '../sources';
 import type { LocationData } from '../types';
 
@@ -8,7 +11,12 @@ import type { LocationData } from '../types';
 vi.mock('../three/ThreeUserMarker', () => {
     // Create mock class inside factory to avoid hoisting issues
     class MockThreeUserMarker {
+        // Track every constructed instance so tests can assert that each one
+        // is disposed (StrictMode double-mount creates two markers).
+        static instances: MockThreeUserMarker[] = [];
+
         private _confidence: 'high' | 'medium' | 'low' | 'lost' = 'high';
+        disposed = false;
 
         setProjectionCenter = vi.fn().mockReturnThis();
         setPosition = vi.fn().mockReturnThis();
@@ -22,7 +30,6 @@ vi.mock('../three/ThreeUserMarker', () => {
         getConfidence = vi.fn().mockImplementation(() => this._confidence);
         getOrientation = vi.fn().mockReturnValue('y-up');
         update = vi.fn();
-        dispose = vi.fn();
 
         // Three.js Object3D-like properties
         position = { x: 0, y: 0, z: 0, set: vi.fn() };
@@ -31,6 +38,17 @@ vi.mock('../three/ThreeUserMarker', () => {
         add = vi.fn();
         remove = vi.fn();
         children: any[] = [];
+
+        constructor() {
+            MockThreeUserMarker.instances.push(this);
+        }
+
+        // Defined on the prototype (not an instance vi.fn) so that
+        // vi.spyOn(ThreeUserMarker.prototype, 'dispose') counts dispose calls
+        // across ALL instances, and instance-level spies still work.
+        dispose(): void {
+            this.disposed = true;
+        }
     }
 
     return {
@@ -89,6 +107,12 @@ class MockLocationSource implements LocationSource {
     }
 
     simulateLocationUpdate(location: LocationData): void {
+        this.lastLocation = location;
+        this.emit('update', location);
+    }
+
+    // Alias matching Task 5's OrientationMockSource API.
+    emitUpdate(location: LocationData): void {
         this.lastLocation = location;
         this.emit('update', location);
     }
@@ -357,23 +381,35 @@ describe('useYouAreHere', () => {
                 useYouAreHere(getOptions())
             );
 
-            const disposeSpy = vi.spyOn(result.current.marker, 'dispose');
+            // renderHook flushes the mount effect synchronously, so the marker
+            // has already settled into state (marker is now `... | null`).
+            expect(result.current.marker).not.toBeNull();
+            const disposeSpy = vi.spyOn(result.current.marker!, 'dispose');
 
             unmount();
 
             expect(disposeSpy).toHaveBeenCalled();
         });
 
-        it('stops and disposes source on unmount', () => {
-            const stopSpy = vi.spyOn(mockSource, 'stop');
-            const disposeSpy = vi.spyOn(mockSource, 'dispose');
+        // Ownership: the hook only tears down a provider it created itself.
+        // (An injected locationSource is the caller's to dispose — covered by
+        // the "does not dispose an injected locationSource" test below.)
+        it('stops and disposes a hook-owned provider on unmount', () => {
+            const stopSpy = vi.spyOn(GeolocationProvider.prototype, 'stop');
+            const disposeSpy = vi.spyOn(GeolocationProvider.prototype, 'dispose');
 
-            const { unmount } = renderHook(() => useYouAreHere(getOptions()));
+            // No locationSource -> the hook creates and owns a GeolocationProvider.
+            const { unmount } = renderHook(() =>
+                useYouAreHere({ center: [-74.006, 40.7128] })
+            );
 
             unmount();
 
             expect(stopSpy).toHaveBeenCalled();
             expect(disposeSpy).toHaveBeenCalled();
+
+            stopSpy.mockRestore();
+            disposeSpy.mockRestore();
         });
     });
 
@@ -413,5 +449,70 @@ describe('useYouAreHere', () => {
 
             expect(result.current.permission).toBe('denied');
         });
+    });
+});
+
+// These run with REAL timers (outside the fake-timer describe above) so that
+// waitFor can observe the marker settling into state after the mount effect.
+describe('StrictMode safety, live callbacks, and source ownership', () => {
+    it('disposes every marker it creates across StrictMode double-mount', async () => {
+        // The mock's `dispose` lives on the prototype precisely so this spy
+        // counts dispose calls across ALL instances (StrictMode creates two).
+        (ThreeUserMarker as unknown as { instances: Array<{ disposed: boolean }> }).instances.length = 0;
+        const disposeSpy = vi.spyOn(ThreeUserMarker.prototype, 'dispose');
+        const source = new MockLocationSource();
+
+        const { result, unmount } = renderHook(
+            () => useYouAreHere({ center: [0, 0], locationSource: source }),
+            { wrapper: StrictMode }
+        );
+
+        await waitFor(() => expect(result.current.marker).not.toBeNull());
+        unmount();
+
+        // Every construction must be paired with a dispose. The old useMemo
+        // version leaked the marker from StrictMode's discarded first render.
+        const created = (ThreeUserMarker as unknown as { instances: Array<{ disposed: boolean }> }).instances;
+        expect(created.length).toBeGreaterThanOrEqual(2);
+        expect(created.every((m) => m.disposed)).toBe(true);
+        expect(disposeSpy.mock.calls.length).toBeGreaterThanOrEqual(2);
+
+        disposeSpy.mockRestore();
+        source.dispose();
+    });
+
+    it('does not dispose an injected locationSource on unmount', () => {
+        const source = new MockLocationSource();
+        const disposeSpy = vi.spyOn(source, 'dispose');
+        const { unmount } = renderHook(() =>
+            useYouAreHere({ center: [0, 0], locationSource: source })
+        );
+        unmount();
+        expect(disposeSpy).not.toHaveBeenCalled();
+    });
+
+    it('calls the LATEST onUpdate callback, not the mount-time one', async () => {
+        const source = new MockLocationSource();
+        const first = vi.fn();
+        const second = vi.fn();
+        const { result, rerender, unmount } = renderHook(
+            ({ cb }) => useYouAreHere({ center: [0, 0], locationSource: source, onUpdate: cb }),
+            { initialProps: { cb: first } }
+        );
+        await waitFor(() => expect(result.current.marker).not.toBeNull());
+
+        rerender({ cb: second });
+        act(() => {
+            source.emitUpdate({
+                longitude: 0, latitude: 0, altitude: null, accuracy: 5,
+                speed: null, heading: null, timestamp: Date.now(),
+            });
+        });
+
+        expect(second).toHaveBeenCalled();
+        expect(first).not.toHaveBeenCalled();
+
+        unmount();
+        source.dispose();
     });
 });

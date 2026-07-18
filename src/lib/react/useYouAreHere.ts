@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import * as THREE from 'three';
 import { ThreeUserMarker } from '../three/ThreeUserMarker';
 import { GeolocationProvider } from '../GeolocationProvider';
@@ -11,6 +11,7 @@ import type {
   ConfidenceState,
 } from '../types';
 import type { LocationSource } from '../sources';
+import type { RoveError } from '../errors';
 
 export interface UseYouAreHereOptions {
   /**
@@ -36,7 +37,11 @@ export interface UseYouAreHereOptions {
   geolocationOptions?: GeolocationOptions;
 
   /**
-   * Custom location source (for testing or replay)
+   * Custom location source (for testing or replay).
+   *
+   * When provided, the caller owns the source: the hook will not dispose it on
+   * unmount (it only unsubscribes its own listeners). When omitted, the hook
+   * creates and owns an internal GeolocationProvider and disposes it.
    */
   locationSource?: LocationSource;
 
@@ -60,12 +65,18 @@ export interface UseYouAreHereOptions {
   /**
    * Callback fired on errors
    */
-  onError?: (error: Error) => void;
+  onError?: (error: RoveError) => void;
 }
 
 export interface UseYouAreHereResult {
-  /** The ThreeUserMarker instance to add to your scene */
-  marker: ThreeUserMarker;
+  /**
+   * The ThreeUserMarker instance to add to your scene.
+   *
+   * `null` until the mount effect runs — the marker is created inside an effect
+   * (never during render) so React StrictMode's discarded first render cannot
+   * leak GPU resources. Guard for null before rendering it.
+   */
+  marker: ThreeUserMarker | null;
 
   /** Current location data */
   location: LocationData | null;
@@ -74,7 +85,7 @@ export interface UseYouAreHereResult {
   scenePosition: [number, number, number] | null;
 
   /** Last error */
-  error: Error | null;
+  error: RoveError | null;
 
   /** Permission state */
   permission: PermissionState;
@@ -118,6 +129,8 @@ export interface UseYouAreHereResult {
  *     update(delta, camera);
  *   });
  *
+ *   // `marker` is null until the mount effect runs — guard before rendering.
+ *   if (!marker) return null;
  *   return <primitive object={marker} />;
  * }
  *
@@ -146,39 +159,55 @@ export function useYouAreHere(options: UseYouAreHereOptions): UseYouAreHereResul
   // State
   const [location, setLocation] = useState<LocationData | null>(null);
   const [scenePosition, setScenePosition] = useState<[number, number, number] | null>(null);
-  const [error, setError] = useState<Error | null>(null);
+  const [error, setError] = useState<RoveError | null>(null);
   const [permission, setPermission] = useState<PermissionState>('prompt');
   const [confidence, setConfidence] = useState<ConfidenceState>('high');
   const [isTracking, setIsTracking] = useState(false);
 
   // Refs for stable instances
   const providerRef = useRef<LocationSource | null>(null);
+  const markerRef = useRef<ThreeUserMarker | null>(null);
   const projectionRef = useRef<MercatorProjection | null>(null);
 
-  // Create marker once (memoized)
-  const marker = useMemo(() => {
+  // Marker is created in the mount effect (never during render) so StrictMode's
+  // discarded render can't leak GPU resources. Null until the effect runs.
+  const [marker, setMarker] = useState<ThreeUserMarker | null>(null);
+
+  // Always call the latest callbacks — consumers pass inline arrows every render.
+  const onUpdateRef = useRef(onUpdate);
+  const onErrorRef = useRef(onError);
+  useEffect(() => {
+    onUpdateRef.current = onUpdate;
+    onErrorRef.current = onError;
+  });
+
+  // Keep the projection in sync with props. Depend on the center's components
+  // (not the array identity) so a fresh `[lng, lat]` literal with unchanged
+  // values doesn't needlessly rebuild the projection — while keeping
+  // react-hooks/exhaustive-deps satisfied without an eslint-disable.
+  const [centerLng, centerLat] = center;
+  useEffect(() => {
+    const nextCenter: [number, number] = [centerLng, centerLat];
+    projectionRef.current = new MercatorProjection(nextCenter, scale);
+    markerRef.current?.setProjectionCenter(nextCenter, scale);
+  }, [centerLng, centerLat, scale]);
+
+  // Create marker + provider together; tear both down symmetrically.
+  useEffect(() => {
     const m = new ThreeUserMarker(markerOptions);
     m.setProjectionCenter(center, scale);
-    return m;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only create once
+    markerRef.current = m;
+    setMarker(m);
 
-  // Create projection for coordinate conversion
-  useEffect(() => {
-    projectionRef.current = new MercatorProjection(center, scale);
-  }, [center, scale]);
-
-  // Setup provider and event handlers
-  useEffect(() => {
+    const ownsProvider = !locationSource;
     const provider = locationSource ?? new GeolocationProvider(geolocationOptions);
     providerRef.current = provider;
+    const unsubscribers: Array<() => void> = [];
 
-    // Location updates
-    provider.on('update', (loc) => {
+    unsubscribers.push(provider.on('update', (loc) => {
       setLocation(loc);
       setError(null);
 
-      // Convert to scene coordinates
       const projection = projectionRef.current;
       if (projection) {
         const [x, y, z] = projection.lngLatToScene(
@@ -186,48 +215,42 @@ export function useYouAreHere(options: UseYouAreHereOptions): UseYouAreHereResul
           loc.latitude,
           loc.altitude ?? 0
         );
-
         setScenePosition([x, y, z]);
 
-        // Update marker position
-        if (marker.getOrientation() === 'y-up') {
-          marker.setPosition(x, z, -y);
+        if (m.getOrientation() === 'y-up') {
+          m.setPosition(x, z, -y);
         } else {
-          marker.setPosition(x, y, z);
+          m.setPosition(x, y, z);
         }
-        marker.setAccuracy(loc.accuracy);
-        marker.setHeading(loc.heading, loc.speed);
+        m.setAccuracy(loc.accuracy);
+        m.setHeading(loc.heading, loc.speed);
       }
 
-      onUpdate?.(loc);
-    });
+      onUpdateRef.current?.(loc);
+    }));
 
-    // Errors
-    provider.on('error', (err) => {
-      const error = err as Error;
-      setError(error);
-      onError?.(error);
-    });
+    unsubscribers.push(provider.on('error', (err) => {
+      const roveError = err as RoveError;
+      setError(roveError);
+      onErrorRef.current?.(roveError);
+    }));
 
-    // Permission changes
-    provider.on('permissionChange', (state) => {
+    unsubscribers.push(provider.on('permissionChange', (state) => {
       setPermission(state);
-    });
+    }));
 
-    // Device orientation (compass)
     if (enableCompass && provider instanceof GeolocationProvider) {
-      provider.on('deviceOrientation', (event) => {
+      unsubscribers.push(provider.on('deviceOrientation', (event) => {
         let heading: number | null = null;
         if ((event as any).webkitCompassHeading !== undefined) {
           heading = (event as any).webkitCompassHeading;
         } else if (event.alpha !== null) {
           heading = (360 - event.alpha) % 360;
         }
-        marker.setDeviceHeading(heading);
-      });
+        m.setDeviceHeading(heading);
+      }));
     }
 
-    // Auto-start
     if (autoStart) {
       provider.start().then(() => {
         setIsTracking(true);
@@ -235,22 +258,32 @@ export function useYouAreHere(options: UseYouAreHereOptions): UseYouAreHereResul
           provider.startDeviceOrientation();
         }
       }).catch((err) => {
-        setError(err);
-        onError?.(err);
+        setError(err as RoveError);
+        onErrorRef.current?.(err as RoveError);
       });
     }
 
-    // Cleanup
     return () => {
-      provider.stop();
-      provider.dispose();
+      for (const unsubscribe of unsubscribers) unsubscribe();
+      if (ownsProvider) {
+        provider.stop();
+        provider.dispose();
+      }
       providerRef.current = null;
+
+      m.dispose();
+      markerRef.current = null;
+      setMarker(null);
     };
+    // Intentionally mount-only: option changes require a remount (documented);
+    // callbacks flow through refs above.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run on mount
+  }, [locationSource]);
 
   // Track confidence changes
   useEffect(() => {
+    if (!marker) return;
+
     const checkConfidence = () => {
       setConfidence(marker.getConfidence());
     };
@@ -258,13 +291,6 @@ export function useYouAreHere(options: UseYouAreHereOptions): UseYouAreHereResul
     // Poll confidence (it can change from staleness)
     const interval = setInterval(checkConfidence, 1000);
     return () => clearInterval(interval);
-  }, [marker]);
-
-  // Cleanup marker on unmount
-  useEffect(() => {
-    return () => {
-      marker.dispose();
-    };
   }, [marker]);
 
   // Actions
@@ -281,11 +307,11 @@ export function useYouAreHere(options: UseYouAreHereOptions): UseYouAreHereResul
         provider.startDeviceOrientation();
       }
     } catch (err) {
-      setError(err as Error);
-      onError?.(err as Error);
+      setError(err as RoveError);
+      onErrorRef.current?.(err as RoveError);
       throw err;
     }
-  }, [enableCompass, onError]);
+  }, [enableCompass]);
 
   const stop = useCallback(() => {
     const provider = providerRef.current;
@@ -305,7 +331,7 @@ export function useYouAreHere(options: UseYouAreHereOptions): UseYouAreHereResul
     try {
       await provider.requestDeviceOrientationPermission();
     } catch (err) {
-      setError(err as Error);
+      setError(err as RoveError);
       throw err;
     }
   }, []);
@@ -313,9 +339,9 @@ export function useYouAreHere(options: UseYouAreHereOptions): UseYouAreHereResul
   // Update function for animation loop
   const update = useCallback(
     (deltaTime: number, camera?: THREE.Camera, target?: THREE.Vector3) => {
-      marker.update(deltaTime, camera, target);
+      markerRef.current?.update(deltaTime, camera, target);
     },
-    [marker]
+    []
   );
 
   return {
